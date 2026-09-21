@@ -1,0 +1,10 @@
+{
+    "pack": {
+        "description": "Iron Age Furniture Biomes O' Plenty Add-on resources",
+        "max_format": 121,
+        "min_format": [
+            121,
+            0
+        ]
+    }
+}
