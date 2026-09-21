@@ -22,4 +22,6 @@ See [Legacy migration](docs/LEGACY_MIGRATION.md) for the exact colour contract, 
 
 ## Development
 
-Use the checked-in Gradle wrapper and Java 25. The build verifies the released Iron Age Furniture dependency against its pinned SHA-256 and emits deterministic main, sources and Javadoc jars.
+Use the checked-in Gradle wrapper and Java 25. Portable daemon-JVM criteria make Gradle and Buildship switch from Eclipse's Java 21 runtime to an installed Adoptium Java 25 before this build is evaluated. `prepareEclipse` then records the exact local Java 25 installation and shared Gradle cache in the generated project preferences.
+
+The build verifies the released Iron Age Furniture dependency against its pinned SHA-256 and emits deterministic main, sources and Javadoc jars.

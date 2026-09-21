@@ -95,7 +95,16 @@ tasks.matching { it.name.startsWith('cacheVersionExecutable') }.configureEach {
 
 tasks.register('verifyBuildEnvironment') {
     group = 'verification'
+    inputs.file layout.projectDirectory.file('gradle/gradle-daemon-jvm.properties')
     doLast {
+        File daemonCriteriaFile = file('gradle/gradle-daemon-jvm.properties')
+        Properties daemonCriteria = new Properties()
+        daemonCriteriaFile.withInputStream { daemonCriteria.load(it) }
+        if (daemonCriteria.getProperty('toolchainVersion') != project.gradle_java_version.toString()
+                || daemonCriteria.getProperty('toolchainVendor') != 'ADOPTIUM'
+                || daemonCriteria.keySet().any { it.toString().startsWith('toolchainUrl.') }) {
+            throw new GradleException('Gradle daemon criteria must select a local Adoptium Java 25 without download URLs')
+        }
         def metadata = java25Compiler.get().metadata
         String actual = metadata.javaRuntimeVersion.toString().replaceFirst(/-LTS$/, '')
         if (actual != project.java_toolchain_version.toString()
