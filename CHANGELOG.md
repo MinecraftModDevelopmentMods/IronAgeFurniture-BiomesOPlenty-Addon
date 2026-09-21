@@ -9,3 +9,4 @@ First release for Minecraft 26.3 on NeoForge.
 - Supports furniture saved by earlier versions that included Biomes O' Plenty integration.
 - Preserves red padded benches from existing 1.10 and 1.12 worlds and recognises all sixteen colours used by the newer legacy format.
 - Replaces furniture made from retired Biomes O' Plenty woods with documented visual alternatives during migration.
+- Loads legacy padded-bench compatibility entries without missing-model warnings while they are being upgraded.

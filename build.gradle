@@ -333,7 +333,9 @@ tasks.register('verifyFurnitureInventory') {
             throw new GradleException('BOP registration IDs are incomplete or escaped the historical naming convention')
         }
         Map<String, Integer> expected = [
-                'assets/ironagefurniture/blockstates': 546,
+                // The 546 visible blockstates plus 30 non-cherry legacy BOP
+                // compatibility blockstates whose names contain biomesoplenty.
+                'assets/ironagefurniture/blockstates': 576,
                 'assets/ironagefurniture/models/item': 546,
                 'assets/ironagefurniture/items': 546,
                 'data/ironagefurniture/recipe': 546,
@@ -359,6 +361,52 @@ tasks.register('verifyResourceJson') {
         fileTree('src/main/resources') { include '**/*.json'; include '**/*.mcmeta' }.each { candidate ->
             try { new JsonSlurper().parse(candidate) }
             catch (Exception failure) { throw new GradleException("Invalid JSON ${project.relativePath(candidate)}", failure) }
+        }
+    }
+}
+
+tasks.register('verifyBlockstateModelReferences') {
+    group = 'verification'
+    dependsOn tasks.named('verifyPinnedCoreArtifact')
+    inputs.dir layout.projectDirectory.dir('src/main/resources/assets/ironagefurniture/blockstates')
+    inputs.dir layout.projectDirectory.dir('src/main/resources/assets/ironagefurniture/models/block')
+    inputs.files configurations.ironAgeFurnitureVerification
+    doLast {
+        Set<String> availableModels = fileTree('src/main/resources/assets/ironagefurniture/models/block') {
+            include '*.json'
+        }.files.collect { model ->
+            "ironagefurniture:block/${model.name.replaceFirst(/\.json$/, '')}".toString()
+        } as Set<String>
+        new ZipFile(configurations.ironAgeFurnitureVerification.singleFile).withCloseable { coreJar ->
+            coreJar.entries().findAll {
+                it.name.startsWith('assets/ironagefurniture/models/block/') && it.name.endsWith('.json')
+            }.each { entry ->
+                String model = entry.name
+                        .replaceFirst('assets/ironagefurniture/models/block/', 'ironagefurniture:block/')
+                        .replaceFirst(/\.json$/, '')
+                availableModels.add(model.toString())
+            }
+        }
+
+        Set<String> missing = new TreeSet<>()
+        Closure collectModels
+        collectModels = { value, File source ->
+            if (value instanceof Map) {
+                if (value.model instanceof String
+                        && value.model.startsWith('ironagefurniture:block/')
+                        && !availableModels.contains(value.model)) {
+                    missing.add("${project.relativePath(source)} -> ${value.model}")
+                }
+                value.values().each { nested -> collectModels(nested, source) }
+            } else if (value instanceof Collection) {
+                value.each { nested -> collectModels(nested, source) }
+            }
+        }
+        fileTree('src/main/resources/assets/ironagefurniture/blockstates') { include '*.json' }.each { blockstate ->
+            collectModels(new JsonSlurper().parse(blockstate), blockstate)
+        }
+        if (!missing.isEmpty()) {
+            throw new GradleException("Blockstates reference missing models: ${missing.take(20)}")
         }
     }
 }
@@ -411,6 +459,7 @@ tasks.register('verifyLegacyMigrationContract') {
         String registry = file('src/main/java/zone/moddev/mc/iafbopaddon/compat/LegacyPaddedBenchRegistry.java').getText('UTF-8')
         String mappings = file('src/main/java/zone/moddev/mc/iafbopaddon/compat/LegacyPaddedBenchMappings.java').getText('UTF-8')
         String migration = file('src/main/java/zone/moddev/mc/iafbopaddon/compat/LegacyPaddedBenchMigration.java').getText('UTF-8')
+        Map catalog = new JsonSlurper().parse(file('gradle/furniture-catalog.json')) as Map
         [
                 'padded_bench_colour', 'registerIntermediateCherryItemAlias',
                 'LegacyPaddedBenchBlockEntity::new'
@@ -425,6 +474,21 @@ tasks.register('verifyLegacyMigrationContract') {
         ['ChunkDataEvent.Load', 'PlayerLoggedInEvent', 'ItemEntity', 'DataComponents.CONTAINER',
          'DataComponents.BUNDLE_CONTENTS', 'transmuteCopy', 'removeColor'].each {
             if (!migration.contains(it)) throw new GradleException("Migration surface is missing ${it}")
+        }
+        Map<String, String> expectedFallbacks = [
+                cherry: 'cherry', ebony: 'biomesoplenty_hellbark', ethereal: 'warped',
+                eucalyptus: 'biomesoplenty_origin_oak', fir: 'biomesoplenty_fir',
+                hellbark: 'biomesoplenty_hellbark', jacaranda: 'biomesoplenty_jacaranda',
+                magic: 'biomesoplenty_magic', mahogany: 'biomesoplenty_mahogany',
+                mangrove: 'pale_oak', palm: 'biomesoplenty_palm', pine: 'biomesoplenty_pine',
+                redwood: 'biomesoplenty_redwood', sacred_oak: 'biomesoplenty_origin_oak',
+                umbran: 'biomesoplenty_umbran', willow: 'biomesoplenty_willow'
+        ]
+        Map<String, String> catalogFallbacks = (catalog.legacyCompatibility as List).collectEntries {
+            [(it.legacy.toString()): it.target.toString()]
+        }
+        if (catalogFallbacks != expectedFallbacks) {
+            throw new GradleException("Legacy compatibility resources do not match migration fallbacks: ${catalogFallbacks}")
         }
     }
 }
@@ -658,6 +722,7 @@ tasks.named('check') {
     dependsOn tasks.named('verifyMavenCoordinates')
     dependsOn tasks.named('verifyFurnitureInventory')
     dependsOn tasks.named('verifyResourceJson')
+    dependsOn tasks.named('verifyBlockstateModelReferences')
     dependsOn tasks.named('verifyIntegrationTextures')
     dependsOn tasks.named('verifyNamespaceMigration')
     dependsOn tasks.named('verifyLegacyMigrationContract')
