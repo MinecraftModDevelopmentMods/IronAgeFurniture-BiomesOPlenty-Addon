@@ -2,7 +2,10 @@
 
 ## 0.3.0.2603002
 
-- Adds 546 Iron Age Furniture blocks and items using all 14 Biomes O' Plenty 26.3 wood families.
-- Preserves the historical `ironagefurniture` registry and resource identities used by earlier integrated releases.
-- Adds migration support for red-only and sixteen-colour padded benches from the legacy 1.10 and 1.12 formats.
-- Maps retired Biomes O' Plenty wood furniture to documented visual fallbacks without claiming upstream wood renames.
+First release for Minecraft 26.3 on NeoForge.
+
+- Adds 546 Iron Age Furniture blocks and items made from all 14 supported Biomes O' Plenty wood families.
+- Adds matching crafting recipes, recipe-book unlocks, names and models.
+- Supports furniture saved by earlier versions that included Biomes O' Plenty integration.
+- Preserves red padded benches from existing 1.10 and 1.12 worlds and recognises all sixteen colours used by the newer legacy format.
+- Replaces furniture made from retired Biomes O' Plenty woods with documented visual alternatives during migration.
