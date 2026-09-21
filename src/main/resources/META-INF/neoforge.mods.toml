@@ -1,0 +1,42 @@
+modLoader="javafml"
+license="${mod_license}"
+issueTrackerURL="https://github.com/MinecraftModDevelopmentMods/IronAgeFurniture-BiomesOPlenty-Addon/issues"
+
+[[mods]]
+modId="${mod_id}"
+version="${version}"
+displayName="${mod_name}"
+displayURL="https://www.curseforge.com/minecraft/mc-mods/iron-age-furniture-biomes-o-plenty-addon"
+credits="Cyanobacterium, SkyBlade1978, FoxNekitsune, the MMD Team, NeoForge, FML, and the Biomes O' Plenty authors"
+authors="${mod_authors}"
+description='''
+${mod_description}
+'''
+
+[[dependencies.iafbopaddon]]
+    modId="neoforge"
+    type="required"
+    versionRange="${neo_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.iafbopaddon]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.iafbopaddon]]
+    modId="ironagefurniture"
+    type="required"
+    versionRange="${ironagefurniture_version_range}"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.iafbopaddon]]
+    modId="biomesoplenty"
+    type="required"
+    versionRange="${biomesoplenty_version_range}"
+    ordering="AFTER"
+    side="BOTH"

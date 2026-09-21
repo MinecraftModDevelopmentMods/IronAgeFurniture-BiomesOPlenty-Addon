@@ -1,0 +1,99 @@
+name: IAF Biomes O Plenty Add-on 26.3 NeoForge CI
+
+on:
+  push:
+    branches:
+      - master-26.3-neo
+      - 'feature/**'
+  pull_request:
+    branches:
+      - master-26.3-neo
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iaf-bop-addon-26.3-neoforge-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cold-bootstrap:
+    name: Cold and offline-repeat bootstrap
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install exact Java 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '25.0.3+9.0.LTS'
+      - name: Resolve once from an empty cache and repeat offline
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          export GRADLE_USER_HOME="$RUNNER_TEMP/iaf-bop-addon-cold-cache"
+          rm -rf "$GRADLE_USER_HOME"
+          args=(
+            --no-daemon --no-build-cache --stacktrace --max-workers=2
+            "-Dorg.gradle.java.installations.paths=$JAVA_HOME"
+            -Dorg.gradle.java.installations.auto-detect=false
+            -Dorg.gradle.java.installations.auto-download=false
+          )
+          ./gradlew compileJava verifyPinnedCoreArtifact "${args[@]}"
+          ./gradlew compileJava verifyPinnedCoreArtifact --offline "${args[@]}"
+
+  build:
+    name: Build, test, and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install exact Java 25
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '25.0.3+9.0.LTS'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+      - name: Build, test, document, and audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          args=(
+            --no-daemon --stacktrace --max-workers=2
+            "-Dorg.gradle.java.installations.paths=$JAVA_HOME"
+            -Dorg.gradle.java.installations.auto-detect=false
+            -Dorg.gradle.java.installations.auto-download=false
+          )
+          ./gradlew clean "${args[@]}"
+          ./gradlew check build javadoc verifyFurnitureCatalog verifyReleaseArtifacts \
+            writeReleaseChecksums verifyReleaseChecksums prepareEclipse \
+            verifyEclipseProductionClasspath "${args[@]}"
+      - name: Upload audited release candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: iaf-bop-addon-26.3-neoforge-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            build/libs/iron-age-furniture-biomes-o-plenty-addon-0.3.0.2603002.jar
+            build/libs/iron-age-furniture-biomes-o-plenty-addon-0.3.0.2603002-sources.jar
+            build/libs/iron-age-furniture-biomes-o-plenty-addon-0.3.0.2603002-javadoc.jar
+            build/release/SHA256SUMS
+            CHANGELOG.md
+      - name: Upload diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: iaf-bop-addon-diagnostics-${{ github.sha }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            build/test-results/**
+            build/reports/**
+            run/logs/**
