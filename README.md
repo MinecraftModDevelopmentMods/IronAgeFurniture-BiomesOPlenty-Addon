@@ -1,27 +1,40 @@
 # Iron Age Furniture: Biomes O' Plenty Add-on
 
-Version `0.3.0.2603002` adds furniture made from every supported Biomes O' Plenty 26.3 wood to Iron Age Furniture on NeoForge.
+Bring the woods of Biomes O' Plenty into Iron Age Furniture. This add-on lets you craft the familiar Iron Age Furniture range in every supported Biomes O' Plenty 26.3 wood type.
+
+## What this add-on includes
+
+- 546 furniture blocks and items across 14 Biomes O' Plenty wood families
+- Chairs, stools, benches and the full matching furniture range
+- Recipes and recipe-book unlocks for every included item
+- Compatibility support for older Iron Age Furniture worlds
+
+The add-on uses Biomes O' Plenty's installed textures, so resource packs that replace those wood textures can also change the matching furniture. No Biomes O' Plenty assets are included in this project.
 
 ## Requirements
 
+Install all of the following mods:
+
 - Minecraft 26.3
 - NeoForge 26.3
-- Iron Age Furniture `0.3.0.2603002` or newer within the 0.3 series
-- Biomes O' Plenty `26.3.0.0.2` or newer within the 26.3 series
-- Biomes O' Plenty's required GlitchCore and TerraBlender dependencies
+- Iron Age Furniture `0.3.0.2603002` or a newer 0.3 release
+- Biomes O' Plenty `26.3.0.0.2` or a newer 26.3 release
+- The GlitchCore and TerraBlender versions required by Biomes O' Plenty
 
-The add-on is deliberately separate from the core mod. Its loader identity is `iafbopaddon`, while furniture retains the historical `ironagefurniture` registry and resource IDs so existing worlds can be migrated safely.
+This is an add-on, not a replacement for either parent mod. Minecraft will show a clear dependency error if Iron Age Furniture or Biomes O' Plenty is missing or incompatible.
 
-The add-on references Biomes O' Plenty textures at runtime and does not redistribute any Biomes O' Plenty assets.
+## Updating an existing world
 
-## Legacy migration
+The add-on can recognise Biomes O' Plenty furniture saved by older Iron Age Furniture versions, including the red-only padded benches from the current 1.10 and 1.12 releases and the newer sixteen-colour format.
 
-Compatibility handling covers the current red-only padded benches from legacy 1.10/1.12 releases and the forthcoming sixteen-colour format. Retired wood families use documented visual fallbacks; this does not claim that the upstream woods were renamed.
+Always back up a world before upgrading it. Very old Minecraft worlds may need to pass through intermediate Minecraft versions before 26.3 can open them. Once Minecraft has successfully loaded the world, the add-on converts the furniture it recognises and preserves bench colour wherever that information is available.
 
-See [Legacy migration](docs/LEGACY_MIGRATION.md) for the exact colour contract, fallback table, and whole-world upgrade boundary.
+Some Biomes O' Plenty woods no longer exist. Their furniture is changed to the closest practical visual alternative instead of disappearing. The full list and recommended upgrade steps are in the [legacy migration guide](docs/LEGACY_MIGRATION.md).
 
-## Development
+## For contributors
 
-Use the checked-in Gradle wrapper and Java 25. Portable daemon-JVM criteria make Gradle and Buildship switch from Eclipse's Java 21 runtime to an installed Adoptium Java 25 before this build is evaluated. `prepareEclipse` then records the exact local Java 25 installation and shared Gradle cache in the generated project preferences.
+The project builds with Java 25 and the checked-in Gradle wrapper. Run `gradlew.bat build` on Windows or `./gradlew build` on Linux and macOS.
 
-The build verifies the released Iron Age Furniture dependency against its pinned SHA-256 and emits deterministic main, sources and Javadoc jars.
+For Eclipse, import the project as an existing Gradle project. The checked-in Gradle configuration selects an installed Adoptium Java 25 runtime even when Eclipse itself is running on Java 21. Running `prepareEclipse` refreshes the generated Eclipse settings and launch files for the local machine.
+
+Release builds contain deterministic main, source and Javadoc jars. The build also checks the pinned Iron Age Furniture dependency, generated furniture catalog, resources, metadata and release artifacts.
