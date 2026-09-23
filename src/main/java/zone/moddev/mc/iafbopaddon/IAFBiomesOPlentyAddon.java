@@ -1,10 +1,10 @@
 package zone.moddev.mc.iafbopaddon;
 
 import com.mojang.logging.LogUtils;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.eventbus.api.bus.BusGroup;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
 import zone.moddev.mc.iafbopaddon.init.ModBOPBlocks;
 import zone.moddev.mc.iafbopaddon.compat.LegacyPaddedBenchMigration;
@@ -21,11 +21,12 @@ public final class IAFBiomesOPlentyAddon {
     public static final String MOD_ID = "iafbopaddon";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public IAFBiomesOPlentyAddon(IEventBus modBus, ModContainer container) {
-        ModBOPBlocks.REGISTER.register(modBus);
-        ModBOPBlocks.ITEMS.register(modBus);
-        LegacyPaddedBenchRegistry.register(modBus);
-        modBus.addListener(this::populateCreativeTab);
+    public IAFBiomesOPlentyAddon(FMLJavaModLoadingContext context) {
+        BusGroup modBusGroup = context.getModBusGroup();
+        ModBOPBlocks.REGISTER.register(modBusGroup);
+        ModBOPBlocks.ITEMS.register(modBusGroup);
+        LegacyPaddedBenchRegistry.register(modBusGroup);
+        BuildCreativeModeTabContentsEvent.BUS.addListener(this::populateCreativeTab);
         LegacyPaddedBenchMigration.register();
         LOGGER.info("Iron Age Furniture Biomes O' Plenty Add-on is loading");
     }

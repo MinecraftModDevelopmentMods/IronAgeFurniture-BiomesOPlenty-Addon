@@ -16,12 +16,16 @@ The add-on uses Biomes O' Plenty's installed textures, so resource packs that re
 Install all of the following mods:
 
 - Minecraft 26.3
-- NeoForge 26.3
-- Iron Age Furniture `0.3.0.2603002` or a newer 0.3 release
+- Forge `66.0.2` or newer for Minecraft 26.3
+- Iron Age Furniture `0.3.0.2603001` or a newer compatible Forge 0.3 release
 - Biomes O' Plenty `26.3.0.0.2` or a newer 26.3 release
 - The GlitchCore and TerraBlender versions required by Biomes O' Plenty
 
+For Forge testing, TerraBlender `26.3.0.0.5` is the current recommended build. TerraBlender `26.3.0.0.6` has a confirmed server-start crash in its own surface-rule update code on Forge 66.0.2; use `26.3.0.0.5` until TerraBlender publishes a corrected build.
+
 This is an add-on, not a replacement for either parent mod. Minecraft will show a clear dependency error if Iron Age Furniture or Biomes O' Plenty is missing or incompatible.
+
+NeoForge players should use the separate `0.3.0.2603002` build. Furniture keeps the same saved registry names on both loaders, so a backed-up 26.3 world can move between the matching Forge and NeoForge installations.
 
 ## Updating an existing world
 

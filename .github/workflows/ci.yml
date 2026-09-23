@@ -1,19 +1,19 @@
-name: IAF Biomes O Plenty Add-on 26.3 NeoForge CI
+name: IAF Biomes O Plenty Add-on 26.3 Forge CI
 
 on:
   push:
     branches:
-      - master-26.3-neo
+      - master-26.3
       - 'feature/**'
   pull_request:
     branches:
-      - master-26.3-neo
+      - master-26.3
 
 permissions:
   contents: read
 
 concurrency:
-  group: iaf-bop-addon-26.3-neoforge-${{ github.workflow }}-${{ github.ref }}
+  group: iaf-bop-addon-26.3-forge-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -42,8 +42,8 @@ jobs:
             -Dorg.gradle.java.installations.auto-detect=false
             -Dorg.gradle.java.installations.auto-download=false
           )
-          ./gradlew compileJava verifyPinnedCoreArtifact "${args[@]}"
-          ./gradlew compileJava verifyPinnedCoreArtifact --offline "${args[@]}"
+          ./gradlew compileJava verifyPinnedCoreArtifact verifyMavenizerCompatibilityFixture "${args[@]}"
+          ./gradlew compileJava verifyPinnedCoreArtifact verifyMavenizerCompatibilityFixture --offline "${args[@]}"
 
   build:
     name: Build, test, and audit
@@ -70,20 +70,19 @@ jobs:
             -Dorg.gradle.java.installations.auto-detect=false
             -Dorg.gradle.java.installations.auto-download=false
           )
-          ./gradlew clean "${args[@]}"
-          ./gradlew check build javadoc verifyFurnitureCatalog verifyReleaseArtifacts \
+          ./gradlew clean check build javadoc verifyFurnitureCatalog verifyReleaseArtifacts \
             writeReleaseChecksums verifyReleaseChecksums prepareEclipse \
             verifyEclipseProductionClasspath "${args[@]}"
       - name: Upload audited release candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: iaf-bop-addon-26.3-neoforge-${{ github.sha }}
+          name: iaf-bop-addon-26.3-forge-${{ github.sha }}
           if-no-files-found: error
           retention-days: 30
           path: |
-            build/libs/iron-age-furniture-biomes-o-plenty-addon-0.3.0.2603002.jar
-            build/libs/iron-age-furniture-biomes-o-plenty-addon-0.3.0.2603002-sources.jar
-            build/libs/iron-age-furniture-biomes-o-plenty-addon-0.3.0.2603002-javadoc.jar
+            build/libs/iron-age-furniture-biomes-o-plenty-addon-0.3.0.2603001.jar
+            build/libs/iron-age-furniture-biomes-o-plenty-addon-0.3.0.2603001-sources.jar
+            build/libs/iron-age-furniture-biomes-o-plenty-addon-0.3.0.2603001-javadoc.jar
             build/release/SHA256SUMS
             CHANGELOG.md
       - name: Upload diagnostics on failure

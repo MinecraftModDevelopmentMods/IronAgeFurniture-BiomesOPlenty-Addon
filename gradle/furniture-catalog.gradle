@@ -59,7 +59,7 @@ def targetFurnitureJavaSource = { String source, def catalog ->
     source
 }
 def renderTargetFurnitureData = { String relative, String rendered, def catalog ->
-    if (!(catalog.dataSchema in ['forge50', 'forge52', 'forge61', 'neoforge']) || !relative.endsWith('.json')) {
+    if (!(catalog.dataSchema in ['forge50', 'forge52', 'forge61', 'forge66', 'neoforge']) || !relative.endsWith('.json')) {
         return rendered
     }
     if (relative.contains('/advancements/') || relative.contains('/advancement/')) {
@@ -69,7 +69,7 @@ def renderTargetFurnitureData = { String relative, String rendered, def catalog 
                 && wrapper.advancements[0].conditions.size() == 1) {
             Map branch = wrapper.advancements[0] as Map
             Map advancement = new LinkedHashMap(branch.advancement as Map)
-            if (catalog.dataSchema in ['forge61', 'neoforge']) {
+            if (catalog.dataSchema in ['forge61', 'forge66', 'neoforge']) {
                 advancement.sends_telemetry_event = false
                 advancement.criteria?.values()?.each { criterion ->
                     criterion.conditions?.items?.each { predicate ->
@@ -94,7 +94,7 @@ def renderTargetFurnitureData = { String relative, String rendered, def catalog 
         if (recipe.result instanceof Map && recipe.result.item != null) {
             recipe.result.id = recipe.result.remove('item')
         }
-        if (catalog.dataSchema in ['forge61', 'neoforge']) {
+        if (catalog.dataSchema in ['forge61', 'forge66', 'neoforge']) {
             def nativeIngredient = { Object ingredient ->
                 if (ingredient instanceof Map && ingredient.keySet() == ['item'] as Set) {
                     return ingredient.item

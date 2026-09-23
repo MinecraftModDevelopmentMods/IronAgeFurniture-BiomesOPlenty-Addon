@@ -1,9 +1,9 @@
 {
   "schema": 1,
   "minecraft": "26.3",
-  "loader": "neoforge",
+  "loader": "forge",
   "dataLayout": "singular",
-  "dataSchema": "neoforge",
+  "dataSchema": "forge66",
   "itemDefinitions": true,
   "vanilla": [
     { "wood": "oak", "display": "Oak", "log": "oak_log", "logTop": "oak_log_top", "planks": "oak_planks", "nether": false },

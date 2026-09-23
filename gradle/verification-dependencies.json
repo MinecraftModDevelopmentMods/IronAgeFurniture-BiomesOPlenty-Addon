@@ -1,29 +1,46 @@
 {
   "minecraft": "26.3",
+  "loader": "forge",
   "mods": [
     {
       "modId": "biomesoplenty",
-      "role": "integration",
+      "role": "minimum-integration",
       "version": "26.3.0.0.2",
-      "file": "BiomesOPlenty-neoforge-26.3-26.3.0.0.2.jar",
-      "sha256": "86aa585d0a0cb363a878c9a09fbed2ba28c32f7f2b84cda2e2bea4f68a3299bf",
-      "source": "https://modrinth.com/mod/biomes-o-plenty/version/5xfum0m1"
+      "file": "BiomesOPlenty-forge-26.3-26.3.0.0.2.jar",
+      "sha256": "330f2df1dfd19e33c609348984eef19e8ace63f6753b056459b598add3a4aa38",
+      "source": "https://www.curseforge.com/minecraft/mc-mods/biomes-o-plenty/files"
+    },
+    {
+      "modId": "biomesoplenty",
+      "role": "current-integration",
+      "version": "26.3.0.0.4",
+      "file": "BiomesOPlenty-forge-26.3-26.3.0.0.4.jar",
+      "sha256": "188b87325486b003036dbdb2f1996eabc320628cbed58608dd8fbb23d2488e8a",
+      "source": "https://www.curseforge.com/minecraft/mc-mods/biomes-o-plenty/files/8949331"
     },
     {
       "modId": "glitchcore",
       "role": "dependency",
-      "version": "26.3.0.0.2",
-      "file": "GlitchCore-neoforge-26.3-26.3.0.0.2.jar",
-      "sha256": "247c9f70f2bd09c10e87dd2feadb7191206aafa3e28620f0d5fb630438120d92",
-      "source": "https://modrinth.com/mod/glitchcore/version/oony3ZtX"
+      "version": "26.3.0.0.3",
+      "file": "GlitchCore-forge-26.3-26.3.0.0.3.jar",
+      "sha256": "8a13afb2f8035a527e3927c3fda76bb0f889d57ea8ddf2d0926d4bc02a790152",
+      "source": "https://www.curseforge.com/minecraft/mc-mods/glitchcore/files"
     },
     {
       "modId": "terrablender",
-      "role": "dependency",
-      "version": "26.3.0.0.1",
-      "file": "TerraBlender-neoforge-26.3-26.3.0.0.1.jar",
-      "sha256": "7ac85af97149d73a8d5d09c2958ae4a3bc2437d43f37f9422ee9531e908a1804",
-      "source": "https://modrinth.com/mod/terrablender/version/WzcFwqjR"
+      "role": "positive-test-dependency",
+      "version": "26.3.0.0.5",
+      "file": "TerraBlender-forge-26.3-26.3.0.0.5.jar",
+      "sha256": "926a4399d3c092b2a2d4f8626c4d4e482448217f59e86e38c7e661c33b34a846",
+      "source": "https://modrinth.com/mod/terrablender/version/shhB6Akv"
+    },
+    {
+      "modId": "terrablender",
+      "role": "current-upstream-incompatibility-probe",
+      "version": "26.3.0.0.6",
+      "file": "TerraBlender-forge-26.3-26.3.0.0.6.jar",
+      "sha256": "39733452924944aa5da5f8e033dcb2d4a435d141faf356934d0901d8c42b6e19",
+      "source": "https://www.curseforge.com/minecraft/mc-mods/terrablender-forge/files"
     }
   ]
 }

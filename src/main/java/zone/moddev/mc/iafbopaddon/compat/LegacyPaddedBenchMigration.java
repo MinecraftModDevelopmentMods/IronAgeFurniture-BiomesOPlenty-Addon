@@ -32,14 +32,13 @@ import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.level.ChunkDataEvent;
-import net.neoforged.neoforge.event.level.ChunkEvent;
-import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
-import net.neoforged.neoforge.event.server.ServerStoppingEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.level.ChunkDataEvent;
+import net.minecraftforge.event.level.ChunkEvent;
+import net.minecraftforge.event.server.ServerAboutToStartEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import org.slf4j.Logger;
 import zone.moddev.mc.iafbopaddon.IAFBiomesOPlentyAddon;
 import zone.moddev.mc.iafbopaddon.world.MigrationWorldState;
@@ -56,13 +55,13 @@ public final class LegacyPaddedBenchMigration {
     private static final LongAdder RUN_ITEMS = new LongAdder();
 
     public static void register() {
-        NeoForge.EVENT_BUS.addListener(LegacyPaddedBenchMigration::rawChunkLoaded);
-        NeoForge.EVENT_BUS.addListener(LegacyPaddedBenchMigration::chunkLoaded);
-        NeoForge.EVENT_BUS.addListener(LegacyPaddedBenchMigration::serverTick);
-        NeoForge.EVENT_BUS.addListener(LegacyPaddedBenchMigration::playerLogin);
-        NeoForge.EVENT_BUS.addListener(LegacyPaddedBenchMigration::entityJoin);
-        NeoForge.EVENT_BUS.addListener(LegacyPaddedBenchMigration::serverAboutToStart);
-        NeoForge.EVENT_BUS.addListener(LegacyPaddedBenchMigration::serverStopping);
+        ChunkDataEvent.Load.BUS.addListener(LegacyPaddedBenchMigration::rawChunkLoaded);
+        ChunkEvent.Load.BUS.addListener(LegacyPaddedBenchMigration::chunkLoaded);
+        TickEvent.ServerTickEvent.Post.BUS.addListener(LegacyPaddedBenchMigration::serverTick);
+        PlayerEvent.PlayerLoggedInEvent.BUS.addListener(LegacyPaddedBenchMigration::playerLogin);
+        EntityJoinLevelEvent.BUS.addListener(LegacyPaddedBenchMigration::entityJoin);
+        ServerAboutToStartEvent.BUS.addListener(LegacyPaddedBenchMigration::serverAboutToStart);
+        ServerStoppingEvent.BUS.addListener(LegacyPaddedBenchMigration::serverStopping);
     }
 
     static void rawChunkLoaded(ChunkDataEvent.Load event) {
@@ -76,7 +75,7 @@ public final class LegacyPaddedBenchMigration {
         PENDING_CHUNKS.add(chunk);
     }
 
-    static void serverTick(ServerTickEvent.Post event) {
+    static void serverTick(TickEvent.ServerTickEvent.Post event) {
         LevelChunk chunk;
         while ((chunk = PENDING_CHUNKS.poll()) != null) migrateChunk(chunk);
     }
@@ -246,7 +245,7 @@ public final class LegacyPaddedBenchMigration {
         }
 
         CustomData custom = working.get(DataComponents.CUSTOM_DATA);
-        if (custom == null || !custom.contains(LegacyPaddedBenchBlockEntity.COLOR_TAG)) {
+        if (custom == null || !custom.copyTag().contains(LegacyPaddedBenchBlockEntity.COLOR_TAG)) {
             return new StackResult(working, changed);
         }
         CompoundTag customTag = custom.copyTag();
