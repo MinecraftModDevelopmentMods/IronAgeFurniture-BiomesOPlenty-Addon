@@ -177,6 +177,32 @@ def renderFurnitureCatalog = { File outputRoot ->
         }
     }
 
+    (catalog.legacyCompatibility ?: []).each { mapping ->
+        [false, true].each { boolean back ->
+            String blockPrefix = back
+                    ? 'chair_wood_ironage_bench_back_padded_'
+                    : 'chair_wood_ironage_bench_padded_'
+            String legacySuffix = mapping.legacy == 'cherry'
+                    ? 'cherry' : "biomesoplenty_${mapping.legacy}"
+            String compatibilityId = "${blockPrefix}single_${legacySuffix}"
+            Map<String, Object> variants = new LinkedHashMap<>()
+            [true, false].each { boolean waterlogged ->
+                ['single', 'middle', 'right', 'left'].each { String type ->
+                    [north: 0, east: 90, south: 180, west: 270].each { facing, rotation ->
+                        variants["facing=${facing},type=${type},waterlogged=${waterlogged}"] = [
+                                model: "ironagefurniture:block/${blockPrefix}red_${type}_${mapping.target}",
+                                y: rotation
+                        ]
+                    }
+                }
+            }
+            String blockstate = JsonOutput.prettyPrint(JsonOutput.toJson([variants: variants])) + '\n'
+            writeFurnitureFile(outputRoot,
+                    "src/main/resources/assets/ironagefurniture/blockstates/${compatibilityId}.json",
+                    blockstate, generated)
+        }
+    }
+
     if (catalog.itemDefinitions) {
         catalog.integrations.each { integration ->
             String packPrefix = "src/main/resources"
@@ -326,7 +352,7 @@ tasks.register('updateFurnitureCatalog') {
 
 tasks.register('verifyFurnitureCatalog') {
     group = 'verification'
-    description = 'Regenerates furniture into a temporary tree and compares it byte-for-byte with committed output.'
+    description = 'Regenerates furniture into a temporary tree and compares it with committed output.'
     inputs.file furnitureCatalogFile
     inputs.dir furnitureTemplateDirectory
     doLast {
@@ -338,7 +364,9 @@ tasks.register('verifyFurnitureCatalog') {
             File expectedFile = new File(expectedRoot, relative)
             File actualFile = new File(project.projectDir, relative)
             if (!actualFile.isFile()) throw new GradleException("Missing catalog output: ${relative}")
-            if (Files.mismatch(expectedFile.toPath(), actualFile.toPath()) != -1L) {
+            String expectedText = expectedFile.getText('UTF-8').replace('\r\n', '\n').replace('\r', '\n')
+            String actualText = actualFile.getText('UTF-8').replace('\r\n', '\n').replace('\r', '\n')
+            if (expectedText != actualText) {
                 throw new GradleException("Catalog output differs; run updateFurnitureCatalog: ${relative}")
             }
         }

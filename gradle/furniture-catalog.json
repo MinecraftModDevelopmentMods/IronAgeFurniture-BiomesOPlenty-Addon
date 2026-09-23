@@ -31,6 +31,24 @@
       ]
     }
   ],
+  "legacyCompatibility": [
+    { "legacy": "cherry", "target": "cherry" },
+    { "legacy": "ebony", "target": "biomesoplenty_hellbark" },
+    { "legacy": "ethereal", "target": "warped" },
+    { "legacy": "eucalyptus", "target": "biomesoplenty_origin_oak" },
+    { "legacy": "fir", "target": "biomesoplenty_fir" },
+    { "legacy": "hellbark", "target": "biomesoplenty_hellbark" },
+    { "legacy": "jacaranda", "target": "biomesoplenty_jacaranda" },
+    { "legacy": "magic", "target": "biomesoplenty_magic" },
+    { "legacy": "mahogany", "target": "biomesoplenty_mahogany" },
+    { "legacy": "mangrove", "target": "pale_oak" },
+    { "legacy": "palm", "target": "biomesoplenty_palm" },
+    { "legacy": "pine", "target": "biomesoplenty_pine" },
+    { "legacy": "redwood", "target": "biomesoplenty_redwood" },
+    { "legacy": "sacred_oak", "target": "biomesoplenty_origin_oak" },
+    { "legacy": "umbran", "target": "biomesoplenty_umbran" },
+    { "legacy": "willow", "target": "biomesoplenty_willow" }
+  ],
   "retainedIntegrationClasses": [],
   "retainedIntegrationResources": false
 }
