@@ -1,6 +1,8 @@
 import groovy.json.JsonSlurper
 import groovy.xml.XmlSlurper
+import java.net.URI
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Arrays
 import java.util.jar.Manifest
@@ -291,6 +293,23 @@ configurations {
     }
 }
 
+def developmentRuntimeDefinitions = [
+        [file: "BiomesOPlenty-forge-${project.minecraft_version}-${project.biomesoplenty_version}.jar",
+         url: 'https://cdn.modrinth.com/data/HXF82T3G/versions/FTOdtDAz/BiomesOPlenty-forge-26.3-26.3.0.0.4.jar',
+         sha256: project.biomesoplenty_sha256.toString()],
+        [file: "GlitchCore-forge-${project.minecraft_version}-${project.glitchcore_version}.jar",
+         url: 'https://cdn.modrinth.com/data/s3dmwKy5/versions/elIqWDMx/GlitchCore-forge-26.3-26.3.0.0.3.jar',
+         sha256: project.glitchcore_sha256.toString()],
+        [file: "TerraBlender-forge-${project.minecraft_version}-${project.terrablender_version}.jar",
+         url: 'https://edge.forgecdn.net/files/8938/217/TerraBlender-forge-26.3-26.3.0.0.5.jar',
+         sha256: project.terrablender_sha256.toString()]
+]
+File developmentRuntimeCacheDirectory = layout.projectDirectory.dir(
+        '.gradle/development-runtime-mods').asFile
+List<File> developmentRuntimeCacheFiles = developmentRuntimeDefinitions.collect {
+    new File(developmentRuntimeCacheDirectory, it.file)
+}
+
 dependencies {
     implementation minecraft.dependency(
             "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}")
@@ -319,6 +338,95 @@ tasks.register('verifyPinnedCoreArtifact') {
     }
 }
 tasks.named('compileJava') { dependsOn tasks.named('verifyPinnedCoreArtifact') }
+
+def downloadDevelopmentRuntimeMods = tasks.register('downloadDevelopmentRuntimeMods') {
+    group = 'ide'
+    description = 'Downloads the exact BOP development runtime jars into the ignored Gradle cache.'
+    outputs.files developmentRuntimeCacheFiles
+    outputs.upToDateWhen {
+        developmentRuntimeDefinitions.every { runtimeMod ->
+            File cached = new File(developmentRuntimeCacheDirectory, runtimeMod.file)
+            cached.isFile() && sha256Of(cached) == runtimeMod.sha256.toLowerCase(Locale.ROOT)
+        }
+    }
+    doLast {
+        if (!developmentRuntimeCacheDirectory.isDirectory()
+                && !developmentRuntimeCacheDirectory.mkdirs()) {
+            throw new GradleException(
+                    "Could not create development runtime cache: ${developmentRuntimeCacheDirectory}")
+        }
+        developmentRuntimeDefinitions.each { runtimeMod ->
+            File cached = new File(developmentRuntimeCacheDirectory, runtimeMod.file)
+            String expectedHash = runtimeMod.sha256.toLowerCase(Locale.ROOT)
+            if (cached.isFile() && sha256Of(cached) == expectedHash) return
+            if (gradle.startParameter.offline) {
+                throw new GradleException(
+                        "Offline mode cannot download required development runtime jar ${runtimeMod.file}")
+            }
+
+            File partial = new File(developmentRuntimeCacheDirectory, "${runtimeMod.file}.part")
+            try {
+                URLConnection connection = URI.create(runtimeMod.url).toURL().openConnection()
+                connection.connectTimeout = 30_000
+                connection.readTimeout = 120_000
+                connection.setRequestProperty('User-Agent', 'IronAgeFurniture-BOP-Addon-Development')
+                connection.inputStream.withCloseable { input ->
+                    Files.copy(input, partial.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                }
+                String actualHash = sha256Of(partial)
+                if (actualHash != expectedHash) {
+                    throw new GradleException(
+                            "Development runtime checksum mismatch for ${runtimeMod.file}: ${actualHash}")
+                }
+                Files.move(partial.toPath(), cached.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            } finally {
+                if (partial.isFile()) partial.delete()
+            }
+        }
+    }
+}
+def verifyDevelopmentRuntimeMods = tasks.register('verifyDevelopmentRuntimeMods') {
+    group = 'verification'
+    description = 'Verifies the pinned Forge BOP development runtime.'
+    dependsOn downloadDevelopmentRuntimeMods
+    inputs.files developmentRuntimeCacheFiles
+    doLast {
+        developmentRuntimeDefinitions.each { runtimeMod ->
+            File cached = new File(developmentRuntimeCacheDirectory, runtimeMod.file)
+            String actualHash = cached.isFile() ? sha256Of(cached) : 'missing'
+            if (actualHash != runtimeMod.sha256.toLowerCase(Locale.ROOT)) {
+                throw new GradleException("Development runtime checksum mismatch for ${runtimeMod.file}: ${actualHash}")
+            }
+        }
+    }
+}
+def prepareDevelopmentRuntimeMods = tasks.register('prepareDevelopmentRuntimeMods') {
+    group = 'ide'
+    description = 'Copies the pinned BOP, GlitchCore and TerraBlender jars into the development mods folder.'
+    dependsOn verifyDevelopmentRuntimeMods
+    inputs.files developmentRuntimeCacheFiles
+    File modsDirectory = layout.projectDirectory.dir(
+            "${providers.gradleProperty('runDirectory').getOrElse('run')}/mods").asFile
+    outputs.files developmentRuntimeDefinitions.collect { new File(modsDirectory, it.file) }
+    doLast {
+        if (!modsDirectory.isDirectory() && !modsDirectory.mkdirs()) {
+            throw new GradleException("Could not create development mods directory: ${modsDirectory}")
+        }
+        developmentRuntimeDefinitions.each { runtimeMod ->
+            File target = new File(modsDirectory, runtimeMod.file)
+            File cached = new File(developmentRuntimeCacheDirectory, runtimeMod.file)
+            Files.copy(cached.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            if (sha256Of(target) != runtimeMod.sha256.toLowerCase(Locale.ROOT)) {
+                throw new GradleException("Staged development runtime checksum mismatch for ${target.name}")
+            }
+        }
+    }
+}
+tasks.withType(JavaExec).configureEach { JavaExec runTask ->
+    if (['runClient', 'runServer'].contains(runTask.name)) {
+        runTask.dependsOn prepareDevelopmentRuntimeMods
+    }
+}
 
 def archiveTextSuffixes = ['.cfg', '.html', '.java', '.json', '.lang', '.mcmeta', '.md', '.properties', '.txt', '.xml', '.toml']
 def archiveTextPatterns = archiveTextSuffixes.collect { "**/*${it}".toString() }
@@ -949,6 +1057,7 @@ tasks.register('syncForge66EclipseLaunches') {
     description = 'Synchronizes processed resources and hardens Forge 66 Eclipse launches.'
     dependsOn tasks.named('processResources')
     dependsOn tasks.named('verifyBuildEnvironment')
+    dependsOn prepareDevelopmentRuntimeMods
     dependsOn writeBuildshipPreferences
     mustRunAfter tasks.named('genEclipseRuns')
     doLast {
@@ -1142,6 +1251,7 @@ tasks.withType(PublishToMavenRepository).configureEach {
 tasks.named('check') {
     dependsOn tasks.named('verifyMavenizerCompatibilityFixture')
     dependsOn tasks.named('verifyPinnedCoreArtifact')
+    dependsOn verifyDevelopmentRuntimeMods
     dependsOn tasks.named('verifyMavenCoordinates')
     dependsOn tasks.named('verifyFurnitureInventory')
     dependsOn tasks.named('verifyResourceJson')
