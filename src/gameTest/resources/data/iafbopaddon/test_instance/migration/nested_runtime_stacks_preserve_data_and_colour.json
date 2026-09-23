@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "iafbopaddon:migration/nested_runtime_stacks_preserve_data_and_colour",
+  "max_ticks": 100,
+  "structure": "forge:empty8x4x8"
+}

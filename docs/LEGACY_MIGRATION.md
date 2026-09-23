@@ -9,10 +9,12 @@ The add-on can restore recognised furniture when an older world reaches Minecraf
 1. Make a complete backup of the original world.
 2. Work on a copy until you have checked the result in game.
 3. Follow Minecraft's normal world-upgrade path. A world from 1.10 or 1.12 may need to be opened in one or more intermediate Minecraft versions before 26.3 can read it.
-4. Install Iron Age Furniture, Biomes O' Plenty, this add-on, and all required dependencies before opening the world in 26.3.
+4. Install the Forge or NeoForge editions of Iron Age Furniture, Biomes O' Plenty and this add-on, keeping all three on the same loader, before opening the world in 26.3.
 5. Visit the areas containing old furniture so Minecraft loads and updates those chunks, then save and reopen the world once.
 
 The add-on reports a short migration summary in the game log. Loading the world again is safe; furniture that has already been updated is left alone.
+
+The Forge and NeoForge 26.3 add-on files use the same saved furniture names. If you change loaders, make a backup first and replace all three related mods with their matching loader editions before opening the copied world.
 
 ## Padded bench colours
 

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Map;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -36,6 +37,39 @@ class LegacyPaddedBenchMappingsTest {
         assertEquals("chair_wood_ironage_bench_back_padded_blue_single_biomesoplenty_fir",
                 LegacyPaddedBenchMappings.modernId("fir", true, "blue").getPath());
         assertNull(LegacyPaddedBenchMappings.modernId("invented", false, "red"));
+    }
+
+    @Test
+    void mapsEveryFurnitureFormForRetiredWoods() {
+        Map<String, String> woods = Map.of(
+                "ebony", "biomesoplenty_hellbark",
+                "ethereal", "warped",
+                "eucalyptus", "biomesoplenty_origin_oak",
+                "mangrove", "pale_oak",
+                "sacred_oak", "biomesoplenty_origin_oak");
+        List<String> prefixes = List.of(
+                "chair_wood_ironage_classic",
+                "chair_wood_ironage_shield",
+                "chair_wood_ironage_stool_short",
+                "chair_wood_ironage_stool_tall",
+                "chair_wood_ironage_bench_single",
+                "chair_wood_ironage_bench_back_single",
+                "chair_wood_ironage_bench_log_single",
+                "chair_wood_ironage_bench_padded_blue_single",
+                "chair_wood_ironage_bench_back_padded_white_single");
+        woods.forEach((oldWood, targetWood) -> prefixes.forEach(prefix -> {
+            Identifier source = Identifier.fromNamespaceAndPath("ironagefurniture",
+                    prefix + "_biomesoplenty_" + oldWood);
+            Identifier expected = Identifier.fromNamespaceAndPath("ironagefurniture",
+                    prefix + "_" + targetWood);
+            assertEquals(expected, LegacyPaddedBenchMappings.retiredFurnitureTarget(source));
+        }));
+        assertNull(LegacyPaddedBenchMappings.retiredFurnitureTarget(
+                Identifier.fromNamespaceAndPath("ironagefurniture",
+                        "chair_wood_ironage_classic_biomesoplenty_cherry")));
+        assertNull(LegacyPaddedBenchMappings.retiredFurnitureTarget(
+                Identifier.fromNamespaceAndPath("ironagefurniture",
+                        "chair_wood_ironage_classic_biomesoplenty_fir")));
     }
 
     @Test

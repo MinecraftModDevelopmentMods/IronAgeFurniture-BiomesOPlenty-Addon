@@ -1,7 +1,10 @@
 import groovy.json.JsonSlurper
 import groovy.xml.XmlSlurper
+import java.net.URI
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
+import java.util.Arrays
 import java.util.jar.Manifest
 import java.util.zip.ZipFile
 import org.apache.tools.ant.filters.FixCrLfFilter
@@ -9,11 +12,62 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.jvm.toolchain.JvmVendorSpec
 
 plugins {
-    id 'java-library'
+    id 'java'
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
-    id 'net.neoforged.gradle.userdev' version '7.1.39'
+    id 'net.minecraftforge.gradle' version '7.0.34'
+}
+
+def sha256Of = { File inputFile ->
+    MessageDigest digest = MessageDigest.getInstance('SHA-256')
+    inputFile.withInputStream { input ->
+        byte[] buffer = new byte[8192]
+        for (int read = input.read(buffer); read >= 0; read = input.read(buffer)) {
+            if (read > 0) digest.update(buffer, 0, read)
+        }
+    }
+    digest.digest().encodeHex().toString().toLowerCase(Locale.ROOT)
+}
+
+def mavenizerToolsDirectory = layout.projectDirectory.dir('ci-fixtures/tools')
+def mavenizerCompatibilityJar = mavenizerToolsDirectory.file(
+        'minecraft-mavenizer-0.5.21-orespawn-compat.jar')
+def mavenizerRuleManifest = mavenizerToolsDirectory.file(
+        'minecraft-source-compatibility.json')
+def mavenizerSourcePatch = mavenizerToolsDirectory.file(
+        'minecraft-mavenizer-0.5.21-orespawn-compat.patch')
+def mavenizerLicense = mavenizerToolsDirectory.file('LICENSE-MAVENIZER.txt')
+def mavenizerReadme = mavenizerToolsDirectory.file('README.md')
+def mavenizerFixtureChecksums = [
+        (mavenizerCompatibilityJar.asFile):
+                '9DA1F44821D89B16B3E181CA89057F44CD3FC3F3383EA5A16442872E67E30F35',
+        (mavenizerRuleManifest.asFile):
+                'C765A5F65FB9CD176F3CE08CB0CFCA814D06E649940E2BF169CD8943AFC30B26',
+        (mavenizerSourcePatch.asFile):
+                'BBD82C6BD96206DEA2FE2673F4D7E76FBA92884032455BBFD5CCD59045C5E271',
+        (mavenizerLicense.asFile):
+                '20C17D8B8C48A600800DFD14F95D5CB9FF47066A9641DDEAB48DC54AEC96E331',
+        (mavenizerReadme.asFile):
+                'A611E2BF14E29761B99BF7D3F0FD44AF151DD09A69968C0CFAEC384BD0E7A666'
+]
+
+[mavenizerCompatibilityJar.asFile, mavenizerRuleManifest.asFile].each { fixture ->
+    if (!fixture.isFile()) throw new GradleException("Missing Mavenizer compatibility fixture: ${fixture}")
+    String actual = sha256Of(fixture).toUpperCase(Locale.ROOT)
+    String expected = mavenizerFixtureChecksums[fixture]
+    if (actual != expected) {
+        throw new GradleException("Mavenizer compatibility fixture checksum mismatch for ${fixture.name}: expected ${expected}, found ${actual}")
+    }
+}
+
+fgtools.configure('mavenizer') {
+    classpath.from(mavenizerCompatibilityJar)
+    mainClass.set('net.minecraftforge.mcmaven.cli.Main')
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+        vendor = JvmVendorSpec.ADOPTIUM
+    })
 }
 
 group = project.mod_group
@@ -30,22 +84,11 @@ def expectedTarget = "${minecraftParts[0]}${minecraftParts[1].padLeft(2, '0')}${
 if (versionParts[3] != expectedTarget) {
     throw new GradleException("mod_version target ${versionParts[3]} does not match ${project.minecraft_version} ${project.loader_name} target ${expectedTarget}")
 }
-if (GradleVersion.current() != GradleVersion.version('9.2.1')) {
-    throw new GradleException("This build requires Gradle 9.2.1, found ${GradleVersion.current()}")
+if (GradleVersion.current() != GradleVersion.version('9.7.1')) {
+    throw new GradleException("This build requires Gradle 9.7.1, found ${GradleVersion.current()}")
 }
 if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_25)) {
     throw new GradleException("Gradle requires Java 25 or newer, found ${System.getProperty('java.version')}")
-}
-
-def sha256Of = { File inputFile ->
-    MessageDigest digest = MessageDigest.getInstance('SHA-256')
-    inputFile.withInputStream { input ->
-        byte[] buffer = new byte[8192]
-        for (int read = input.read(buffer); read >= 0; read = input.read(buffer)) {
-            if (read > 0) digest.update(buffer, 0, read)
-        }
-    }
-    digest.digest().encodeHex().toString().toLowerCase(Locale.ROOT)
 }
 
 def java25Compiler = javaToolchains.compilerFor {
@@ -66,6 +109,20 @@ java {
     withJavadocJar()
 }
 
+sourceSets {
+    gameTest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+fgtools.configure('slimelauncher') {
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+        vendor = JvmVendorSpec.ADOPTIUM
+    })
+}
+
 tasks.withType(JavaCompile).configureEach {
     javaCompiler = java25Compiler
     sourceCompatibility = JavaVersion.VERSION_25
@@ -73,7 +130,23 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.compilerArgs.addAll(['-Xlint:deprecation', '-Xmaxerrs', '1000'])
 }
-tasks.named('compileTestJava', JavaCompile) { options.compilerArgs.add('-proc:none') }
+// Forge's merged source-set mode deliberately puts compiled classes and processed
+// resources in one directory. Those overlapping outputs cannot be restored safely
+// from separate Gradle build-cache entries after a clean build.
+tasks.named('compileJava') { outputs.cacheIf('merged Forge production output') { false } }
+tasks.named('processResources') { outputs.cacheIf('merged Forge production output') { false } }
+tasks.named('compileTestJava', JavaCompile) {
+    options.compilerArgs.add('-proc:none')
+    outputs.cacheIf('merged Forge test output') { false }
+}
+tasks.named('processTestResources') { outputs.cacheIf('merged Forge test output') { false } }
+tasks.named('compileGameTestJava', JavaCompile) {
+    options.compilerArgs.add('-proc:none')
+    outputs.cacheIf('merged Forge GameTest output') { false }
+}
+tasks.named('processGameTestResources') {
+    outputs.cacheIf('merged Forge GameTest output') { false }
+}
 tasks.withType(Javadoc).configureEach {
     failOnError = false
     options.encoding = 'UTF-8'
@@ -84,13 +157,6 @@ tasks.withType(AbstractArchiveTask).configureEach {
     preserveFileTimestamps = false
     reproducibleFileOrder = true
     includeEmptyDirs = false
-}
-
-tasks.matching { it.name.startsWith('cacheVersionExecutable') }.configureEach {
-    onlyIf {
-        Set<File> cached = outputs.files.files
-        !gradle.startParameter.offline || cached.isEmpty() || !cached.every { it.exists() }
-    }
 }
 
 tasks.register('verifyBuildEnvironment') {
@@ -115,7 +181,14 @@ tasks.register('verifyBuildEnvironment') {
 }
 tasks.withType(JavaCompile).configureEach { dependsOn tasks.named('verifyBuildEnvironment') }
 
-def eclipseWorkspaceProjectName = 'IronAgeFurnitureBiomesOPlentyAddon'
+// Keep the Eclipse project name aligned with the checkout folder when the
+// project is imported directly beneath its dedicated workspace root.
+def eclipseWorkspaceProjectName = rootProject.name
+def processedMainResourcesDirectory = { sourceSets.main.output.resourcesDir }
+def processedMainResourcesPath = {
+    project.relativePath(processedMainResourcesDirectory()).replace('\\', '/')
+}
+
 eclipse {
     project {
         name = eclipseWorkspaceProjectName
@@ -125,42 +198,132 @@ eclipse {
     classpath {
         downloadSources = true
         downloadJavadoc = true
+        defaultOutputDir = file('bin/default')
         file.whenMerged { classpath ->
+            classpath.entries.findAll { entry ->
+                entry instanceof org.gradle.plugins.ide.eclipse.model.Output
+            }.each { entry -> entry.path = 'bin/default' }
+            String resourcesPath = processedMainResourcesPath()
+            Set<String> replacedResourcePaths = [
+                    'src/main/resources',
+                    'src/generated/resources',
+                    'build/resources/main'
+            ] as Set
             classpath.entries.removeAll { entry ->
                 entry instanceof org.gradle.plugins.ide.eclipse.model.SourceFolder
-                        && entry.path == 'src/main/resources'
+                        && entry.path != resourcesPath
+                        && replacedResourcePaths.contains(entry.path)
             }
             Set<String> libraryPaths = new LinkedHashSet<>()
             classpath.entries.removeAll { entry ->
                 if (!(entry instanceof org.gradle.plugins.ide.eclipse.model.Library)) return false
                 !libraryPaths.add(entry.path.replace('\\', '/').toLowerCase(Locale.ROOT))
             }
-            if (!classpath.entries.any { it.path == 'build/resources/main' }) {
-                classpath.entries.add(new org.gradle.plugins.ide.eclipse.model.SourceFolder('build/resources/main', 'bin/main'))
+            if (!classpath.entries.any { it.path == resourcesPath }) {
+                classpath.entries.add(new org.gradle.plugins.ide.eclipse.model.SourceFolder(resourcesPath, 'bin/main'))
+            }
+            classpath.entries.findAll { entry ->
+                entry instanceof org.gradle.plugins.ide.eclipse.model.SourceFolder
+            }.each { entry ->
+                if (entry.path == 'src/main/java' || entry.path == resourcesPath) entry.output = 'bin/main'
+                else if (entry.path.startsWith('src/test/')) entry.output = 'bin/test'
+                else if (entry.path.startsWith('src/gameTest/')) entry.output = 'bin/gameTest'
             }
         }
     }
+    synchronizationTasks 'isolateEclipseProductionRuns'
 }
 idea.module {
     downloadSources = true
     downloadJavadoc = true
 }
 
-runs {
-    configureEach {
-        workingDirectory project.layout.projectDirectory.dir(providers.gradleProperty('runDirectory').getOrElse('run'))
-        systemProperty 'forge.logging.markers', 'REGISTRIES'
-        systemProperty 'forge.logging.console.level', 'debug'
-        modSource project.sourceSets.main
+minecraft {
+    mappings channel: project.mcp_mappings_channel, version: project.mcp_mappings_version
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir(
+                    providers.gradleProperty('runDirectory').getOrElse('run'))
+            jvmArgs '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED'
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            systemProperty 'forge.logging.console.level', 'debug'
+            mods { iafbopaddon { source sourceSets.main } }
+        }
+        register('client')
+        register('server') { args '--nogui' }
+        register('gameTestServer') {
+            workingDir.convention layout.projectDirectory.dir(
+                    providers.gradleProperty('gameTestRunDirectory').getOrElse('build/game-test-run'))
+            systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
+            mods { iafbopaddon { source sourceSets.gameTest } }
+        }
     }
-    client
-    server { argument '--nogui' }
 }
-tasks.withType(JavaExec).configureEach {
-    if (name == 'runServer') standardInput = System.in
+
+def developmentModOutput = layout.buildDirectory.dir('forge-run-mod-classes/main')
+def prepareDevelopmentMod = tasks.register('prepareDevelopmentMod', Sync) {
+    group = 'ide'
+    description = 'Merges production classes and resources for Forge 66 development discovery.'
+    dependsOn tasks.named('classes')
+    from sourceSets.main.output.classesDirs
+    from sourceSets.main.output.resourcesDir
+    into developmentModOutput
+}
+
+def compiledGameTestClasses = layout.buildDirectory.dir('compiled-classes/gameTest')
+tasks.named('compileGameTestJava', JavaCompile) {
+    destinationDirectory.set(compiledGameTestClasses)
+}
+def mergeGameTestClasses = tasks.register('mergeGameTestClasses') {
+    dependsOn tasks.named('compileGameTestJava'), tasks.named('processGameTestResources')
+    doLast {
+        project.copy {
+            from compiledGameTestClasses
+            into sourceSets.gameTest.output.resourcesDir
+        }
+    }
+}
+tasks.named('gameTestClasses') { dependsOn mergeGameTestClasses }
+
+def gameTestModOutput = layout.buildDirectory.dir('forge-run-mod-classes/gameTest')
+def prepareGameTestMod = tasks.register('prepareGameTestMod', Sync) {
+    group = 'verification'
+    description = 'Merges production and GameTest output for Forge 66 discovery.'
+    dependsOn tasks.named('gameTestClasses')
+    from sourceSets.main.output
+    from sourceSets.gameTest.output
+    into gameTestModOutput
+}
+
+tasks.withType(JavaExec).configureEach { JavaExec runTask ->
+    if (['runClient', 'runServer', 'runGameTestServer'].contains(runTask.name)) {
+        def mergedOutput = runTask.name == 'runGameTestServer'
+                ? gameTestModOutput : developmentModOutput
+        runTask.dependsOn(runTask.name == 'runGameTestServer'
+                ? prepareGameTestMod : prepareDevelopmentMod)
+        runTask.doFirst {
+            Set<String> splitOutputs = (sourceSets.main.output.files
+                    + (runTask.name == 'runGameTestServer' ? sourceSets.gameTest.output.files : []))
+                    .collect {
+                it.canonicalFile.absolutePath
+            } as Set
+            Collection<File> targetClasspath = runTask.classpath.files.findAll {
+                !splitOutputs.contains(it.canonicalFile.absolutePath)
+            }
+            runTask.classpath = files(mergedOutput, targetClasspath)
+            runTask.environment 'MOD_CLASSES', "${project.mod_id}%%${mergedOutput.get().asFile}"
+            File modsDirectory = new File(runTask.workingDir, 'mods')
+            if (!modsDirectory.isDirectory() && !modsDirectory.mkdirs()) {
+                throw new GradleException("Could not create development mods directory: ${modsDirectory}")
+            }
+        }
+    }
 }
 
 repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
     mavenCentral()
     ivy {
         name = 'IronAgeFurnitureGitHubReleases'
@@ -181,8 +344,26 @@ configurations {
     }
 }
 
+def developmentRuntimeDefinitions = [
+        [file: "BiomesOPlenty-forge-${project.minecraft_version}-${project.biomesoplenty_version}.jar",
+         url: 'https://cdn.modrinth.com/data/HXF82T3G/versions/FTOdtDAz/BiomesOPlenty-forge-26.3-26.3.0.0.4.jar',
+         sha256: project.biomesoplenty_sha256.toString()],
+        [file: "GlitchCore-forge-${project.minecraft_version}-${project.glitchcore_version}.jar",
+         url: 'https://cdn.modrinth.com/data/s3dmwKy5/versions/elIqWDMx/GlitchCore-forge-26.3-26.3.0.0.3.jar',
+         sha256: project.glitchcore_sha256.toString()],
+        [file: "TerraBlender-forge-${project.minecraft_version}-${project.terrablender_version}.jar",
+         url: 'https://edge.forgecdn.net/files/8938/217/TerraBlender-forge-26.3-26.3.0.0.5.jar',
+         sha256: project.terrablender_sha256.toString()]
+]
+File developmentRuntimeCacheDirectory = layout.projectDirectory.dir(
+        '.gradle/development-runtime-mods').asFile
+List<File> developmentRuntimeCacheFiles = developmentRuntimeDefinitions.collect {
+    new File(developmentRuntimeCacheDirectory, it.file)
+}
+
 dependencies {
-    implementation "net.neoforged:neoforge:${project.neo_version}"
+    implementation minecraft.dependency(
+            "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}")
     implementation("zone.moddev.mc:iron-age-furniture:${project.ironagefurniture_version}") { transitive = false }
     ironAgeFurnitureVerification("zone.moddev.mc:iron-age-furniture:${project.ironagefurniture_version}") { transitive = false }
     testImplementation platform('org.junit:junit-bom:5.11.4')
@@ -209,6 +390,119 @@ tasks.register('verifyPinnedCoreArtifact') {
 }
 tasks.named('compileJava') { dependsOn tasks.named('verifyPinnedCoreArtifact') }
 
+def downloadDevelopmentRuntimeMods = tasks.register('downloadDevelopmentRuntimeMods') {
+    group = 'ide'
+    description = 'Downloads the exact BOP development runtime jars into the ignored Gradle cache.'
+    outputs.files developmentRuntimeCacheFiles
+    outputs.upToDateWhen {
+        developmentRuntimeDefinitions.every { runtimeMod ->
+            File cached = new File(developmentRuntimeCacheDirectory, runtimeMod.file)
+            cached.isFile() && sha256Of(cached) == runtimeMod.sha256.toLowerCase(Locale.ROOT)
+        }
+    }
+    doLast {
+        if (!developmentRuntimeCacheDirectory.isDirectory()
+                && !developmentRuntimeCacheDirectory.mkdirs()) {
+            throw new GradleException(
+                    "Could not create development runtime cache: ${developmentRuntimeCacheDirectory}")
+        }
+        developmentRuntimeDefinitions.each { runtimeMod ->
+            File cached = new File(developmentRuntimeCacheDirectory, runtimeMod.file)
+            String expectedHash = runtimeMod.sha256.toLowerCase(Locale.ROOT)
+            if (cached.isFile() && sha256Of(cached) == expectedHash) return
+            if (gradle.startParameter.offline) {
+                throw new GradleException(
+                        "Offline mode cannot download required development runtime jar ${runtimeMod.file}")
+            }
+
+            File partial = new File(developmentRuntimeCacheDirectory, "${runtimeMod.file}.part")
+            try {
+                URLConnection connection = URI.create(runtimeMod.url).toURL().openConnection()
+                connection.connectTimeout = 30_000
+                connection.readTimeout = 120_000
+                connection.setRequestProperty('User-Agent', 'IronAgeFurniture-BOP-Addon-Development')
+                connection.inputStream.withCloseable { input ->
+                    Files.copy(input, partial.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                }
+                String actualHash = sha256Of(partial)
+                if (actualHash != expectedHash) {
+                    throw new GradleException(
+                            "Development runtime checksum mismatch for ${runtimeMod.file}: ${actualHash}")
+                }
+                Files.move(partial.toPath(), cached.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            } finally {
+                if (partial.isFile()) partial.delete()
+            }
+        }
+    }
+}
+def verifyDevelopmentRuntimeMods = tasks.register('verifyDevelopmentRuntimeMods') {
+    group = 'verification'
+    description = 'Verifies the pinned Forge BOP development runtime.'
+    dependsOn downloadDevelopmentRuntimeMods
+    inputs.files developmentRuntimeCacheFiles
+    doLast {
+        developmentRuntimeDefinitions.each { runtimeMod ->
+            File cached = new File(developmentRuntimeCacheDirectory, runtimeMod.file)
+            String actualHash = cached.isFile() ? sha256Of(cached) : 'missing'
+            if (actualHash != runtimeMod.sha256.toLowerCase(Locale.ROOT)) {
+                throw new GradleException("Development runtime checksum mismatch for ${runtimeMod.file}: ${actualHash}")
+            }
+        }
+    }
+}
+def prepareDevelopmentRuntimeMods = tasks.register('prepareDevelopmentRuntimeMods') {
+    group = 'ide'
+    description = 'Copies the pinned BOP, GlitchCore and TerraBlender jars into the development mods folder.'
+    dependsOn verifyDevelopmentRuntimeMods
+    inputs.files developmentRuntimeCacheFiles
+    File modsDirectory = layout.projectDirectory.dir(
+            "${providers.gradleProperty('runDirectory').getOrElse('run')}/mods").asFile
+    outputs.files developmentRuntimeDefinitions.collect { new File(modsDirectory, it.file) }
+    doLast {
+        if (!modsDirectory.isDirectory() && !modsDirectory.mkdirs()) {
+            throw new GradleException("Could not create development mods directory: ${modsDirectory}")
+        }
+        developmentRuntimeDefinitions.each { runtimeMod ->
+            File target = new File(modsDirectory, runtimeMod.file)
+            File cached = new File(developmentRuntimeCacheDirectory, runtimeMod.file)
+            Files.copy(cached.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            if (sha256Of(target) != runtimeMod.sha256.toLowerCase(Locale.ROOT)) {
+                throw new GradleException("Staged development runtime checksum mismatch for ${target.name}")
+            }
+        }
+    }
+}
+def prepareGameTestRuntimeMods = tasks.register('prepareGameTestRuntimeMods') {
+    group = 'verification'
+    description = 'Copies the pinned BOP, GlitchCore and TerraBlender jars into the GameTest server.'
+    dependsOn verifyDevelopmentRuntimeMods
+    inputs.files developmentRuntimeCacheFiles
+    File modsDirectory = layout.projectDirectory.dir(
+            "${providers.gradleProperty('gameTestRunDirectory').getOrElse('build/game-test-run')}/mods").asFile
+    outputs.files developmentRuntimeDefinitions.collect { new File(modsDirectory, it.file) }
+    doLast {
+        if (!modsDirectory.isDirectory() && !modsDirectory.mkdirs()) {
+            throw new GradleException("Could not create GameTest mods directory: ${modsDirectory}")
+        }
+        developmentRuntimeDefinitions.each { runtimeMod ->
+            File target = new File(modsDirectory, runtimeMod.file)
+            File cached = new File(developmentRuntimeCacheDirectory, runtimeMod.file)
+            Files.copy(cached.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            if (sha256Of(target) != runtimeMod.sha256.toLowerCase(Locale.ROOT)) {
+                throw new GradleException("Staged GameTest runtime checksum mismatch for ${target.name}")
+            }
+        }
+    }
+}
+tasks.withType(JavaExec).configureEach { JavaExec runTask ->
+    if (['runClient', 'runServer'].contains(runTask.name)) {
+        runTask.dependsOn prepareDevelopmentRuntimeMods
+    } else if (runTask.name == 'runGameTestServer') {
+        runTask.dependsOn prepareGameTestRuntimeMods
+    }
+}
+
 def archiveTextSuffixes = ['.cfg', '.html', '.java', '.json', '.lang', '.mcmeta', '.md', '.properties', '.txt', '.xml', '.toml']
 def archiveTextPatterns = archiveTextSuffixes.collect { "**/*${it}".toString() }
 def normalizeArchiveLineEndings = { details ->
@@ -227,12 +521,13 @@ tasks.named('processResources', ProcessResources) {
             mod_authors: project.mod_authors,
             mod_description: project.mod_description,
             minecraft_version_range: project.minecraft_version_range,
-            neo_version_range: project.neo_version_range,
+            forge_version_range: project.forge_version_range,
+            loader_version_range: project.loader_version_range,
             ironagefurniture_version_range: project.ironagefurniture_version_range,
             biomesoplenty_version_range: project.biomesoplenty_version_range
     ]
     inputs.properties properties
-    filesMatching(['META-INF/neoforge.mods.toml']) { expand properties }
+    filesMatching(['META-INF/mods.toml']) { expand properties }
     filesMatching(archiveTextPatterns, normalizeArchiveLineEndings)
     from('README.md') { into 'META-INF/iafbopaddon/docs' }
     from('CHANGELOG.md') { into 'META-INF/iafbopaddon/docs' }
@@ -324,12 +619,51 @@ tasks.register('verifyMavenCoordinates') {
     group = 'verification'
     dependsOn tasks.named('generatePomFileForMavenJavaPublication')
     doLast {
-        if (expectedCoordinate != 'zone.moddev.mc:iron-age-furniture-biomes-o-plenty-addon:0.3.0.2603002') {
+        if (expectedCoordinate != 'zone.moddev.mc:iron-age-furniture-biomes-o-plenty-addon:0.3.0.2603001') {
             throw new GradleException("Unexpected Maven coordinate ${expectedCoordinate}")
         }
         String pom = layout.buildDirectory.file('publications/mavenJava/pom-default.xml').get().asFile.getText('UTF-8')
-        ['<groupId>zone.moddev.mc</groupId>', '<artifactId>iron-age-furniture-biomes-o-plenty-addon</artifactId>', '<version>0.3.0.2603002</version>'].each {
+        ['<groupId>zone.moddev.mc</groupId>', '<artifactId>iron-age-furniture-biomes-o-plenty-addon</artifactId>', '<version>0.3.0.2603001</version>'].each {
             if (!pom.contains(it)) throw new GradleException("Generated POM is missing ${it}")
+        }
+    }
+}
+
+tasks.register('verifyMavenizerCompatibilityFixture') {
+    group = 'verification'
+    description = 'Verifies the sealed Forge 66 Mavenizer compatibility tool.'
+    inputs.files mavenizerFixtureChecksums.keySet()
+    doLast {
+        mavenizerFixtureChecksums.each { fixture, expected ->
+            if (!fixture.isFile() || sha256Of(fixture) != expected.toLowerCase(Locale.ROOT)) {
+                throw new GradleException("Mavenizer fixture is missing or changed: ${fixture}")
+            }
+        }
+        def parsed = new JsonSlurper().parse(mavenizerRuleManifest.asFile)
+        if (parsed.schema != 1 || parsed.targets.keySet() !=
+                ['net.minecraftforge:forge:26.3-66.0.2'] as Set) {
+            throw new GradleException('Mavenizer target-rule manifest has unexpected targets or schema')
+        }
+        def rules = parsed.targets['net.minecraftforge:forge:26.3-66.0.2']
+        if (rules.expectedApplications != 0 || !rules.rules.isEmpty()) {
+            throw new GradleException('Forge 66 Mavenizer target must be an explicit zero-rule qualification')
+        }
+        new ZipFile(mavenizerCompatibilityJar.asFile).withCloseable { ZipFile zip ->
+            def embeddedEntry = zip.getEntry('META-INF/orespawn/minecraft-source-compatibility.json')
+            if (embeddedEntry == null) {
+                throw new GradleException('Mavenizer fixture is missing its embedded target-rule manifest')
+            }
+            byte[] embedded = zip.getInputStream(embeddedEntry).withCloseable { it.readAllBytes() }
+            if (!Arrays.equals(embedded, mavenizerRuleManifest.asFile.bytes)) {
+                throw new GradleException('Embedded and externally audited Mavenizer manifests differ')
+            }
+            def patcherEntry = zip.getEntry(
+                    'net/minecraftforge/mcmaven/impl/util/SourceCompatibilityPatcher.class')
+            byte[] classHeader = zip.getInputStream(patcherEntry).withCloseable { it.readNBytes(8) }
+            int classMajor = ((classHeader[6] & 0xff) << 8) | (classHeader[7] & 0xff)
+            if (classMajor != 69) {
+                throw new GradleException("Mavenizer compatibility tool must use Java 25 bytecode, found ${classMajor}")
+            }
         }
     }
 }
@@ -339,7 +673,7 @@ tasks.register('verifyFurnitureInventory') {
     doLast {
         File source = file('src/main/java/zone/moddev/mc/iafbopaddon/init/ModBOPBlocks.java')
         String javaText = source.getText('UTF-8')
-        int registrations = (javaText =~ /public static DeferredHolder<Block, Block> chair_/).count
+        int registrations = (javaText =~ /public static RegistryObject<Block> chair_/).count
         if (registrations != 546) throw new GradleException("Expected 546 BOP registrations, found ${registrations}")
         Set<String> ids = (javaText =~ /register\("([^"]+)"/) .collect { it[1] } as Set<String>
         if (ids.size() != 546 || !ids.every { it.contains('_biomesoplenty_') }) {
@@ -428,12 +762,13 @@ tasks.register('verifyIntegrationTextures') {
     group = 'verification'
     doLast {
         File bopJar = providers.gradleProperty('biomesOPlentyJar').map { file(it) }
-                .orElse(file('../dependency-inspection/BiomesOPlenty-neoforge-26.3-26.3.0.0.2.jar')).get()
+                .orElse(file('../dependency-inspection/BiomesOPlenty-forge-26.3-26.3.0.0.4.jar')).get()
         if (!bopJar.isFile()) {
             logger.lifecycle("Skipping external BOP jar path audit; provide -PbiomesOPlentyJar=<published jar>. Static resource references remain checked.")
             return
         }
-        if (sha256Of(bopJar) != '86aa585d0a0cb363a878c9a09fbed2ba28c32f7f2b84cda2e2bea4f68a3299bf') {
+        String actualHash = sha256Of(bopJar)
+        if (!(actualHash in [project.biomesoplenty_minimum_sha256.toString(), project.biomesoplenty_sha256.toString()])) {
             throw new GradleException('Biomes O Plenty test jar SHA-256 mismatch')
         }
         Set<String> entries
@@ -450,6 +785,32 @@ tasks.register('verifyIntegrationTextures') {
     }
 }
 
+tasks.register('verifyPublishedDependencyManifest') {
+    group = 'verification'
+    doLast {
+        Map manifest = new JsonSlurper().parse(file('gradle/verification-dependencies.json')) as Map
+        if (manifest.minecraft != '26.3' || manifest.loader != 'forge') {
+            throw new GradleException('Verification dependency manifest targets the wrong platform')
+        }
+        Map<String, String> expected = [
+                'BiomesOPlenty-forge-26.3-26.3.0.0.2.jar': project.biomesoplenty_minimum_sha256.toString(),
+                'BiomesOPlenty-forge-26.3-26.3.0.0.4.jar': project.biomesoplenty_sha256.toString(),
+                'GlitchCore-forge-26.3-26.3.0.0.3.jar': project.glitchcore_sha256.toString(),
+                'TerraBlender-forge-26.3-26.3.0.0.5.jar': project.terrablender_sha256.toString(),
+                'TerraBlender-forge-26.3-26.3.0.0.6.jar': project.terrablender_current_sha256.toString()
+        ]
+        Map<String, String> actual = (manifest.mods as List).collectEntries {
+            [(it.file.toString()): it.sha256.toString().toLowerCase(Locale.ROOT)]
+        }
+        if (actual != expected) {
+            throw new GradleException("Published dependency manifest mismatch: ${actual}")
+        }
+        if (!(manifest.mods as List).every { it.source.toString().startsWith('https://') }) {
+            throw new GradleException('Every published dependency must include a public source')
+        }
+    }
+}
+
 tasks.register('verifyNamespaceMigration') {
     group = 'verification'
     doLast {
@@ -457,6 +818,9 @@ tasks.register('verifyNamespaceMigration') {
             String text = source.getText('UTF-8')
             if (text.contains('package zone.moddev.mc.ironagefurniture')) {
                 throw new GradleException("Add-on implementation escaped its package: ${source}")
+            }
+            if (text.contains('net.neoforged')) {
+                throw new GradleException("Forge source contains NeoForge API usage: ${source}")
             }
         }
         if (!file('src/main/resources/assets/ironagefurniture').isDirectory()
@@ -528,11 +892,13 @@ tasks.register('verifyExpandedMetadata') {
     group = 'verification'
     dependsOn tasks.named('processResources')
     doLast {
-        String metadata = layout.buildDirectory.file('resources/main/META-INF/neoforge.mods.toml').get().asFile.getText('UTF-8')
+        String metadata = new File(processedMainResourcesDirectory(), 'META-INF/mods.toml').getText('UTF-8')
         [
                 'modId="iafbopaddon"',
+                'modId="forge"',
+                'versionRange="[66.0.2,67)"',
                 'modId="ironagefurniture"',
-                'versionRange="[0.3.0.2603002,0.4)"',
+                'versionRange="[0.3.0.2603001,0.4)"',
                 'modId="biomesoplenty"',
                 'versionRange="[26.3.0.0.2,26.4)"'
         ].each { if (!metadata.contains(it)) throw new GradleException("Expanded metadata is missing ${it}") }
@@ -598,8 +964,35 @@ tasks.register('verifyReleaseTagWorkflow') {
     }
 }
 
+tasks.register('verifyReleaseRoutes') {
+    group = 'verification'
+    doLast {
+        def route = { String releaseVersion ->
+            String suffix = releaseVersion.tokenize('.').last()
+            switch (suffix) {
+                case '2603001': return 'master-26.3'
+                case '2603002': return 'master-26.3-neo'
+                default: throw new GradleException("Unsupported add-on release target ${suffix}")
+            }
+        }
+        if (route('0.3.0.2603001') != 'master-26.3') {
+            throw new GradleException('Forge release route did not resolve to master-26.3')
+        }
+        if (route('0.3.0.2603002') != 'master-26.3-neo') {
+            throw new GradleException('NeoForge release route did not resolve to master-26.3-neo')
+        }
+        try {
+            route('0.3.0.2603003')
+            throw new GradleException('Unknown loader suffix did not fail closed')
+        } catch (GradleException expected) {
+            if (!expected.message.startsWith('Unsupported add-on release target')) throw expected
+        }
+    }
+}
+
 tasks.register('verifyReleaseConfiguration') {
     group = 'verification'
+    dependsOn tasks.named('verifyMavenizerCompatibilityFixture')
     doLast {
         if (project.curseforge_project_id.toString() != '1705705') {
             throw new GradleException('Unexpected CurseForge project ID')
@@ -632,16 +1025,34 @@ tasks.register('verifyReleaseArtifacts') {
         }
         File mainJar = new File(libs, "${base.archivesName.get()}-${project.version}.jar")
         new ZipFile(mainJar).withCloseable { zip ->
-            ['META-INF/neoforge.mods.toml', 'zone/moddev/mc/iafbopaddon/IAFBiomesOPlentyAddon.class'].each {
+            ['META-INF/mods.toml', 'zone/moddev/mc/iafbopaddon/IAFBiomesOPlentyAddon.class'].each {
                 if (zip.getEntry(it) == null) throw new GradleException("Release jar is missing ${it}")
+            }
+            if (zip.getEntry('META-INF/neoforge.mods.toml') != null) {
+                throw new GradleException('Forge release jar contains NeoForge metadata')
             }
             if (zip.entries().any { it.name.startsWith('biomesoplenty/') || it.name.startsWith('assets/biomesoplenty/') }) {
                 throw new GradleException('Release jar redistributes Biomes O Plenty content')
             }
             zip.entries().findAll { it.name.endsWith('.class') }.each { entry ->
-                byte[] header = zip.getInputStream(entry).withCloseable { it.readNBytes(8) }
+                byte[] contents = zip.getInputStream(entry).withCloseable { it.readAllBytes() }
+                byte[] header = Arrays.copyOf(contents, 8)
                 int major = ((header[6] & 0xff) << 8) | (header[7] & 0xff)
                 if (major != 69) throw new GradleException("${entry.name} uses class major ${major}; expected 69")
+                if (new String(contents, java.nio.charset.StandardCharsets.ISO_8859_1).contains('net/neoforged')) {
+                    throw new GradleException("${entry.name} leaks a NeoForge API reference")
+                }
+            }
+            Map pack = new JsonSlurper().parse(zip.getInputStream(zip.getEntry('pack.mcmeta'))) as Map
+            if (pack.pack?.max_format != 121 || pack.pack?.min_format != [121, 0]) {
+                throw new GradleException("Unexpected Minecraft 26.3 pack format ${pack.pack}")
+            }
+            String modsToml = zip.getInputStream(zip.getEntry('META-INF/mods.toml')).getText('UTF-8')
+            ['loaderVersion="[66,)"', 'versionRange="[0.3.0.2603001,0.4)"',
+             'versionRange="[26.3.0.0.2,26.4)"'].each { required ->
+                if (!modsToml.contains(required)) {
+                    throw new GradleException("Forge metadata is missing ${required}")
+                }
             }
             Manifest manifest = new Manifest(zip.getInputStream(zip.getEntry('META-INF/MANIFEST.MF')))
             if (manifest.mainAttributes.getValue('Maven-Artifact') != expectedCoordinate) {
@@ -677,30 +1088,160 @@ tasks.register('verifyReleaseChecksums') {
 }
 
 def prepareEclipseResources = tasks.register('prepareEclipseResources', Sync) {
+    dependsOn tasks.named('classes')
     dependsOn tasks.named('processResources')
-    from layout.buildDirectory.dir('resources/main')
+    from processedMainResourcesDirectory()
     into layout.projectDirectory.dir('bin/main')
+}
+def writeBuildshipPreferences = tasks.register('writeBuildshipPreferences') {
+    group = 'ide'
+    description = 'Writes a complete Buildship project configuration for the dedicated Eclipse workspace.'
+    doLast {
+        def escapePreference = { String value -> value.replace('\\', '\\\\').replace(':', '\\:') }
+        File preferencesFile = file('.settings/org.eclipse.buildship.core.prefs')
+        preferencesFile.parentFile.mkdirs()
+        preferencesFile.setText([
+                'arguments=',
+                'auto.sync=false',
+                'build.scans.enabled=false',
+                'connection.gradle.distribution=GRADLE_DISTRIBUTION(WRAPPER)',
+                "connection.gradle.user.home=${escapePreference(gradle.gradleUserHomeDir.absolutePath)}",
+                'connection.project.dir=',
+                'eclipse.preferences.version=1',
+                "gradle.user.home=${escapePreference(gradle.gradleUserHomeDir.absolutePath)}",
+                "java.home=${escapePreference(java25Launcher.get().metadata.installationPath.asFile.absolutePath)}",
+                'jvm.arguments=',
+                'offline.mode=false',
+                'override.workspace.settings=true',
+                'show.console.view=false',
+                'show.executions.view=false',
+                ''
+        ].join('\r\n'), 'UTF-8')
+    }
 }
 eclipse.synchronizationTasks 'prepareEclipseResources'
 tasks.named('eclipse').configure {
     dependsOn prepareEclipseResources
+    dependsOn writeBuildshipPreferences
+}
+
+tasks.register('syncForge66EclipseLaunches') {
+    group = 'ide'
+    description = 'Synchronizes processed resources and hardens Forge 66 Eclipse launches.'
+    dependsOn tasks.named('processResources')
+    dependsOn tasks.named('verifyBuildEnvironment')
+    dependsOn prepareDevelopmentRuntimeMods
+    dependsOn writeBuildshipPreferences
+    mustRunAfter tasks.named('genEclipseRuns')
     doLast {
-        File preferencesFile = file('.settings/org.eclipse.buildship.core.prefs')
-        Properties preferences = new Properties()
-        preferences.setProperty('eclipse.preferences.version', '1')
-        preferences.setProperty('connection.gradle.distribution', 'GRADLE_DISTRIBUTION(WRAPPER)')
-        preferences.setProperty('override.workspace.settings', 'true')
-        preferences.setProperty('gradle.user.home', gradle.gradleUserHomeDir.canonicalPath)
-        preferences.setProperty('connection.gradle.user.home', gradle.gradleUserHomeDir.canonicalPath)
-        preferences.setProperty('java.home', java25Launcher.get().metadata.installationPath.asFile.canonicalPath)
-        preferencesFile.parentFile.mkdirs()
-        preferencesFile.withOutputStream { preferences.store(it, 'Generated by IAF BOP Add-on for Buildship.') }
+        String mainClass = 'net.minecraftforge.userdev.LaunchTesting'
+        String mainOutput = new File(projectDir, 'bin/main').absolutePath
+        String modClasses = "${project.mod_id}%%${mainOutput}"
+        List<File> eclipseRuntimeClasspath = configurations.runtimeClasspath.files
+                .sort { left, right ->
+                    left.absolutePath.compareToIgnoreCase(right.absolutePath)
+                }
+        String eclipseRuntimeEntries = eclipseRuntimeClasspath.collect { dependency ->
+            String descriptor = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' +
+                    "<runtimeClasspathEntry externalArchive=\"${dependency.absolutePath}\" " +
+                    'type="2" path="5" />'
+            "    <listEntry value=\"${groovy.xml.XmlUtil.escapeXml(descriptor)}\"/>"
+        }.join('\r\n')
+        copy {
+            from processedMainResourcesDirectory()
+            into mainOutput
+        }
+        ['Client', 'Server'].each { runName ->
+            File launch = [file("run${runName}.launch"), file(".eclipse/run${runName}.launch")]
+                    .find { it.isFile() }
+            if (launch == null) throw new GradleException("Missing generated Eclipse launch run${runName}.launch")
+            String text = launch.getText('UTF-8')
+            if (text.contains('<mapAttribute key="org.eclipse.debug.core.environmentVariables"/>')) {
+                text = text.replace(
+                        '<mapAttribute key="org.eclipse.debug.core.environmentVariables"/>',
+                        '<mapAttribute key="org.eclipse.debug.core.environmentVariables">\r\n' +
+                        "    <mapEntry key=\"MOD_CLASSES\" value=\"${modClasses}\"/>\r\n" +
+                        '</mapAttribute>')
+            } else if (!text.contains('<mapEntry key="MOD_CLASSES"')) {
+                text = text.replaceFirst(
+                        /<mapAttribute key="org\.eclipse\.debug\.core\.environmentVariables">\r?\n/,
+                        { String header -> header +
+                                "    <mapEntry key=\"MOD_CLASSES\" value=\"${modClasses}\"/>\r\n" })
+            }
+            text = text.replace('<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value=""/>',
+                    "<stringAttribute key=\"org.eclipse.jdt.launching.MAIN_TYPE\" value=\"${mainClass}\"/>")
+            text = text.replaceFirst(
+                    /<stringAttribute key="org\.eclipse\.jdt\.launching\.PROJECT_ATTR" value="[^"]*"\/>/,
+                    java.util.regex.Matcher.quoteReplacement(
+                            "<stringAttribute key=\"org.eclipse.jdt.launching.PROJECT_ATTR\" value=\"${eclipseWorkspaceProjectName}\"/>"))
+            text = text.replaceFirst(/<mapEntry key="MOD_CLASSES" value="[^"]*"\/>/,
+                    java.util.regex.Matcher.quoteReplacement(
+                            "<mapEntry key=\"MOD_CLASSES\" value=\"${modClasses}\"/>"))
+            def buildshipClasspathPattern = java.util.regex.Pattern.compile(
+                    '(?m)^\\h*<listEntry value="[^"]*org\\.eclipse\\.buildship\\.core\\.gradleclasspathcontainer[^"]*"\\/>\\r?\\n?')
+            def buildshipClasspathEntry = buildshipClasspathPattern.matcher(text)
+            if (!buildshipClasspathEntry.find()) {
+                throw new GradleException(
+                        "ForgeGradle generated an unexpected Buildship classpath entry in ${launch.name}")
+            }
+            text = buildshipClasspathEntry.replaceFirst(
+                    java.util.regex.Matcher.quoteReplacement("${eclipseRuntimeEntries}\r\n"))
+            def argumentsMatch = text =~ /(<stringAttribute key="org\.eclipse\.jdt\.launching\.PROGRAM_ARGUMENTS" value=")([^"]*)("\/>)/
+            if (argumentsMatch.count != 1) {
+                throw new GradleException("ForgeGradle generated malformed program arguments in ${launch.name}")
+            }
+            String arguments = argumentsMatch[0][2]
+            ['cache', 'metadata', 'to-srg', 'to-obf'].each { flag ->
+                String prefix = "--${flag} "
+                int valueStart = arguments.indexOf(prefix)
+                if (valueStart < 0) {
+                    if (flag in ['to-srg', 'to-obf']) return
+                    throw new GradleException("ForgeGradle omitted required --${flag} from ${launch.name}")
+                }
+                valueStart += prefix.length()
+                int valueEnd = arguments.indexOf(' --', valueStart)
+                if (valueEnd < 0) throw new GradleException("Unterminated --${flag} path in ${launch.name}")
+                String value = arguments.substring(valueStart, valueEnd)
+                if (!value.startsWith('&quot;') || !value.endsWith('&quot;')) {
+                    arguments = "${arguments.substring(0, valueStart)}&quot;${value}&quot;${arguments.substring(valueEnd)}"
+                }
+            }
+            text = text.replace(argumentsMatch[0][0],
+                    argumentsMatch[0][1] + arguments + argumentsMatch[0][3])
+            if (!text.contains('ATTR_EXCLUDE_TEST_CODE')) {
+                text = text.replace('</launchConfiguration>',
+                        '    <booleanAttribute key="org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE" value="true"/>\r\n' +
+                        '</launchConfiguration>')
+            }
+            launch.setText(text, 'UTF-8')
+        }
     }
 }
-tasks.register('prepareEclipse') { dependsOn tasks.named('eclipse') }
+
+tasks.matching { it.name == 'genEclipseRuns' }.configureEach {
+    finalizedBy tasks.named('syncForge66EclipseLaunches')
+}
+tasks.matching { it.name.startsWith('genEclipseRun') }.configureEach {
+    dependsOn prepareEclipseResources
+}
+
+tasks.register('isolateEclipseProductionRuns') {
+    group = 'ide'
+    dependsOn tasks.named('genEclipseRuns')
+    dependsOn tasks.named('syncForge66EclipseLaunches')
+}
+
+tasks.register('prepareEclipse') {
+    group = 'ide'
+    description = 'Creates the Buildship project model and ForgeGradle 7 launch profiles.'
+    dependsOn tasks.named('eclipse')
+    dependsOn tasks.named('isolateEclipseProductionRuns')
+}
 tasks.register('verifyEclipseProductionClasspath') {
     group = 'verification'
-    dependsOn tasks.named('eclipse')
+    dependsOn tasks.named('eclipseClasspath')
+    dependsOn tasks.named('eclipseProject')
+    dependsOn tasks.named('isolateEclipseProductionRuns')
     doLast {
         File classpath = file('.classpath')
         File projectFile = file('.project')
@@ -713,8 +1254,45 @@ tasks.register('verifyEclipseProductionClasspath') {
         Set<String> duplicates = libraries.findAll { path -> libraries.count { it == path } > 1 } as Set<String>
         if (!duplicates.isEmpty()) throw new GradleException("Duplicate Eclipse libraries: ${duplicates}")
         String text = classpath.getText('UTF-8')
-        if (!text.contains('path="build/resources/main"') || text.contains('path="src/main/resources"')) {
+        String resourcesPath = processedMainResourcesPath()
+        if (!text.contains("path=\"${resourcesPath}\"")
+                || text.contains('path="src/main/resources"')
+                || text.contains('path="src/generated/resources"')
+                || (resourcesPath != 'build/resources/main'
+                        && text.contains('path="build/resources/main"'))) {
             throw new GradleException('Eclipse must use processed production resources in bin/main')
+        }
+        File buildshipPreferences = file('.settings/org.eclipse.buildship.core.prefs')
+        List<String> requiredPreferences = [
+                'arguments=',
+                'auto.sync=false',
+                'connection.gradle.distribution=GRADLE_DISTRIBUTION(WRAPPER)',
+                'connection.project.dir=',
+                'eclipse.preferences.version=1',
+                'jvm.arguments=',
+                'offline.mode=false',
+                'override.workspace.settings=true'
+        ]
+        if (!buildshipPreferences.isFile()
+                || requiredPreferences.any { !buildshipPreferences.getText('UTF-8').contains(it) }) {
+            throw new GradleException('Eclipse Buildship project preferences are missing or incomplete')
+        }
+        ['Client', 'Server'].each { runName ->
+            File launch = [file("run${runName}.launch"), file(".eclipse/run${runName}.launch")]
+                    .find { it.isFile() }
+            if (launch == null) throw new GradleException("Missing Eclipse launch run${runName}.launch")
+            String launchText = launch.getText('UTF-8')
+            if (!launchText.contains('ATTR_EXCLUDE_TEST_CODE')
+                    || !launchText.contains("key=\"MOD_CLASSES\" value=\"${project.mod_id}%%${new File(projectDir, 'bin/main').absolutePath}\"")
+                    || !launchText.contains("key=\"org.eclipse.jdt.launching.PROJECT_ATTR\" value=\"${eclipseWorkspaceProjectName}\"")
+                    || launchText.contains('org.eclipse.buildship.core.gradleclasspathcontainer')
+                    || launchText.contains('mixinextras-common-')
+                    || !launchText.contains('mixinextras-forge-0.5.4.jar')
+                    || configurations.runtimeClasspath.files.any {
+                        !launchText.contains(it.absolutePath)
+                    }) {
+                throw new GradleException("Eclipse launch is not production-only: ${launch.name}")
+            }
         }
     }
 }
@@ -749,7 +1327,7 @@ tasks.register('verifyPreparedReleaseArtifacts') {
         Map<String, String> declared = new File(prepared, 'SHA256SUMS').readLines('UTF-8')
                 .findAll { !it.trim().isEmpty() }.collectEntries { line ->
                     def parts = line.split(/\s+/, 2)
-                    [(parts[1]): parts[0].toUpperCase(Locale.ROOT)]
+                    [(parts[1]): parts[0].toLowerCase(Locale.ROOT)]
                 }
         if (declared.keySet().sort() != expectedReleaseFiles.sort()) {
             throw new GradleException('Prepared checksums do not list exactly the release jars')
@@ -769,12 +1347,15 @@ tasks.withType(PublishToMavenRepository).configureEach {
 }
 
 tasks.named('check') {
+    dependsOn tasks.named('verifyMavenizerCompatibilityFixture')
     dependsOn tasks.named('verifyPinnedCoreArtifact')
+    dependsOn verifyDevelopmentRuntimeMods
     dependsOn tasks.named('verifyMavenCoordinates')
     dependsOn tasks.named('verifyFurnitureInventory')
     dependsOn tasks.named('verifyResourceJson')
     dependsOn tasks.named('verifyBlockstateModelReferences')
     dependsOn tasks.named('verifyIntegrationTextures')
+    dependsOn tasks.named('verifyPublishedDependencyManifest')
     dependsOn tasks.named('verifyNamespaceMigration')
     dependsOn tasks.named('verifyLegacyMigrationContract')
     dependsOn tasks.named('verifyLegacyMigrationFixtures')
@@ -782,6 +1363,7 @@ tasks.named('check') {
     dependsOn tasks.named('verifyRepositoryHygiene')
     dependsOn tasks.named('verifyWorkflowActionPins')
     dependsOn tasks.named('verifyReleaseTagWorkflow')
+    dependsOn tasks.named('verifyReleaseRoutes')
     dependsOn tasks.named('verifyReleaseConfiguration')
 }
 
