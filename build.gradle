@@ -270,11 +270,29 @@ tasks.named('javadocJar', Jar) {
     }
 }
 
+def expectedReleaseFiles = [
+        "${base.archivesName.get()}-${project.version}.jar",
+        "${base.archivesName.get()}-${project.version}-sources.jar",
+        "${base.archivesName.get()}-${project.version}-javadoc.jar"
+]
+def preparedReleaseDir = providers.gradleProperty('preparedReleaseDir')
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            from components.java
+            groupId = project.group.toString()
             artifactId = base.archivesName.get()
+            version = project.version.toString()
+            if (preparedReleaseDir.isPresent()) {
+                File prepared = file(preparedReleaseDir.get())
+                artifact(new File(prepared, expectedReleaseFiles[0]))
+                artifact(new File(prepared, expectedReleaseFiles[1])) { classifier = 'sources' }
+                artifact(new File(prepared, expectedReleaseFiles[2])) { classifier = 'javadoc' }
+            } else {
+                artifact(tasks.named('jar'))
+                artifact(tasks.named('sourcesJar'))
+                artifact(tasks.named('javadocJar'))
+            }
             pom {
                 name = project.mod_name
                 description = project.mod_description
@@ -290,8 +308,8 @@ publishing {
     }
     repositories {
         maven {
-            name = 'MMDReleases'
-            url = uri(System.getenv('MAVEN_UPLOAD_URL') ?: layout.buildDirectory.dir('blocked-maven-publication').get().asFile)
+            name = 'release'
+            url = uri(System.getenv('MAVEN_UPLOAD_URL') ?: 'https://invalid.invalid/missing-maven-upload-url')
             credentials {
                 username = System.getenv('MAVEN_UPLOAD_USERNAME') ?: ''
                 password = System.getenv('MAVEN_UPLOAD_PASSWORD') ?: ''
@@ -301,11 +319,6 @@ publishing {
 }
 
 def expectedCoordinate = "${project.group}:${base.archivesName.get()}:${project.version}"
-def expectedReleaseFiles = [
-        "${base.archivesName.get()}-${project.version}.jar",
-        "${base.archivesName.get()}-${project.version}-sources.jar",
-        "${base.archivesName.get()}-${project.version}-javadoc.jar"
-]
 
 tasks.register('verifyMavenCoordinates') {
     group = 'verification'
@@ -576,9 +589,13 @@ tasks.register('verifyWorkflowActionPins') {
 tasks.register('verifyReleaseTagWorkflow') {
     group = 'verification'
     doLast {
-        String workflow = file('.github/workflows/release.yml').getText('UTF-8')
-        if (!workflow.contains('curseforge_project_id') || !workflow.contains('UNASSIGNED')) {
-            throw new GradleException('Release workflow does not fail closed while CurseForge ID is unassigned')
+        String workflow = file('.github/workflows/publish-release.yml').getText('UTF-8')
+        ['master-26.3', 'master-26.3-neo', '2603001', '2603002',
+         'curseforge_project_id', '1705705', 'confirm_live_publication',
+         'iron-age-furniture,biomes-o-plenty'].each { required ->
+            if (!workflow.contains(required)) {
+                throw new GradleException("Release dispatcher is missing ${required}")
+            }
         }
     }
 }
@@ -586,8 +603,8 @@ tasks.register('verifyReleaseTagWorkflow') {
 tasks.register('verifyReleaseConfiguration') {
     group = 'verification'
     doLast {
-        if (project.curseforge_project_id.toString() != 'UNASSIGNED') {
-            if (!(project.curseforge_project_id.toString() ==~ /\d+/)) throw new GradleException('CurseForge project ID must be numeric')
+        if (project.curseforge_project_id.toString() != '1705705') {
+            throw new GradleException('Unexpected CurseForge project ID')
         }
         ['README.md', 'CHANGELOG.md', 'docs/VERSIONS.md'].each { path ->
             if (!file(path).getText('UTF-8').contains(project.version.toString())) {
@@ -711,10 +728,46 @@ tasks.register('validateMavenReleaseCredentials') {
         ['MAVEN_UPLOAD_URL', 'MAVEN_UPLOAD_USERNAME', 'MAVEN_UPLOAD_PASSWORD'].each {
             if (!System.getenv(it)) throw new GradleException("${it} is required")
         }
+        if (System.getenv('MAVEN_UPLOAD_URL').startsWith('file:')) {
+            throw new GradleException('Maven release publication must use a remote repository')
+        }
+    }
+}
+
+tasks.register('verifyPreparedReleaseArtifacts') {
+    group = 'verification'
+    description = 'Audits a previously built immutable release bundle before publication.'
+    doLast {
+        if (!preparedReleaseDir.isPresent()) {
+            throw new GradleException('preparedReleaseDir is required')
+        }
+        File prepared = file(preparedReleaseDir.get())
+        List<String> expectedBundle = (expectedReleaseFiles + ['SHA256SUMS', 'CHANGELOG.md']).sort()
+        List<String> actualBundle = (prepared.listFiles() ?: [] as File[])
+                .findAll { it.isFile() }.collect { it.name }.sort()
+        if (actualBundle != expectedBundle) {
+            throw new GradleException("Expected prepared bundle ${expectedBundle}, found ${actualBundle}")
+        }
+        Map<String, String> declared = new File(prepared, 'SHA256SUMS').readLines('UTF-8')
+                .findAll { !it.trim().isEmpty() }.collectEntries { line ->
+                    def parts = line.split(/\s+/, 2)
+                    [(parts[1]): parts[0].toUpperCase(Locale.ROOT)]
+                }
+        if (declared.keySet().sort() != expectedReleaseFiles.sort()) {
+            throw new GradleException('Prepared checksums do not list exactly the release jars')
+        }
+        declared.each { name, expected ->
+            if (sha256Of(new File(prepared, name)) != expected) {
+                throw new GradleException("Prepared checksum mismatch for ${name}")
+            }
+        }
     }
 }
 tasks.withType(PublishToMavenRepository).configureEach {
-    dependsOn tasks.named('validateMavenReleaseCredentials'), tasks.named('verifyReleaseArtifacts')
+    dependsOn tasks.named('validateMavenReleaseCredentials')
+    dependsOn(preparedReleaseDir.isPresent()
+            ? tasks.named('verifyPreparedReleaseArtifacts')
+            : tasks.named('verifyReleaseArtifacts'))
 }
 
 tasks.named('check') {
