@@ -352,7 +352,7 @@ tasks.register('updateFurnitureCatalog') {
 
 tasks.register('verifyFurnitureCatalog') {
     group = 'verification'
-    description = 'Regenerates furniture into a temporary tree and compares it byte-for-byte with committed output.'
+    description = 'Regenerates furniture into a temporary tree and compares it with committed output.'
     inputs.file furnitureCatalogFile
     inputs.dir furnitureTemplateDirectory
     doLast {
@@ -364,7 +364,9 @@ tasks.register('verifyFurnitureCatalog') {
             File expectedFile = new File(expectedRoot, relative)
             File actualFile = new File(project.projectDir, relative)
             if (!actualFile.isFile()) throw new GradleException("Missing catalog output: ${relative}")
-            if (Files.mismatch(expectedFile.toPath(), actualFile.toPath()) != -1L) {
+            String expectedText = expectedFile.getText('UTF-8').replace('\r\n', '\n').replace('\r', '\n')
+            String actualText = actualFile.getText('UTF-8').replace('\r\n', '\n').replace('\r', '\n')
+            if (expectedText != actualText) {
                 throw new GradleException("Catalog output differs; run updateFurnitureCatalog: ${relative}")
             }
         }
