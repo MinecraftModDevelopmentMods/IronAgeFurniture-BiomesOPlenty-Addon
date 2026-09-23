@@ -460,6 +460,20 @@ jobs:
               --no-daemon --stacktrace "${legacy_args[@]}" "${java_args[@]}"
           fi
 
+      - name: Run Forge legacy migration GameTests
+        if: needs.preflight.outputs.loader_name == 'forge'
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          java_args=(
+            "-Dorg.gradle.java.installations.paths=${{ steps.java-paths.outputs.paths }}"
+            -Dorg.gradle.java.installations.auto-detect=false
+            -Dorg.gradle.java.installations.auto-download=false
+          )
+          ./gradlew runGameTestServer -PgameTestRunDirectory=build/game-test-run \
+            --no-daemon --stacktrace --max-workers=2 "${java_args[@]}"
+
       - name: Stage the immutable release artifact
         id: artifact
         run: |

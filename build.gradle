@@ -918,10 +918,8 @@ tasks.register('verifyRepositoryHygiene') {
                     || path.startsWith('run/') || path.startsWith('.idea/') || path.endsWith('.launch')
         }
         if (!bad.isEmpty()) throw new GradleException("Generated files are tracked: ${bad}")
-        fileTree(project.projectDir) {
-            include '**/*'
-            exclude '.git/**', '.gradle/**', 'build/**', 'bin/**', 'logs/**', 'run/**', 'run-*/**', '*.launch'
-        }.files.each { candidate ->
+        tracked.each { path ->
+            File candidate = file(path)
             if (candidate.isFile() && candidate.length() < 2_000_000L) {
                 String text
                 try { text = candidate.getText('UTF-8') } catch (Exception ignored) { return }
