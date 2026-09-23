@@ -8,6 +8,8 @@ First release for Minecraft 26.3 on Forge.
 - Keeps the historical Iron Age Furniture registry names used by the NeoForge build and older integrated versions.
 - Includes recipes, recipe-book unlocks, translations and models for the complete furniture catalog.
 - Migrates red-only and sixteen-colour legacy padded benches, including nested inventory items, without repeating completed conversions.
+- Maps every furniture form made from a retired Biomes O' Plenty wood to the documented visual alternative.
+- Checks the complete 546-entry integrated-core registry contract during automated Forge runtime tests.
 - Supports Biomes O' Plenty from `26.3.0.0.2` through the current `26.3.0.0.4` release line.
 - Tested successfully with TerraBlender `26.3.0.0.5`; documents the upstream Forge server crash in TerraBlender `26.3.0.0.6` so players can avoid that combination.
 - Loads legacy padded-bench compatibility entries without missing-model warnings while they are being upgraded.

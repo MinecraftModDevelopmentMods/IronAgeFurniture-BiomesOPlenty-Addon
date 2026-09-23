@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "iafbopaddon:migration/integrated_core_registry_contract_is_present_at_runtime",
+  "max_ticks": 100,
+  "structure": "forge:empty8x4x8"
+}

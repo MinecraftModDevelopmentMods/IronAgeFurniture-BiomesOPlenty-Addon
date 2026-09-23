@@ -16,6 +16,12 @@ public final class LegacyPaddedBenchMappings {
             "magic", "mahogany", "mangrove", "palm", "pine", "redwood", "sacred_oak",
             "umbran", "willow");
     private static final Set<String> COLORS_SET = Set.copyOf(COLORS);
+    private static final Map<String, TargetWood> RETIRED_BOP_WOODS = Map.of(
+            "ebony", new TargetWood("hellbark", true),
+            "ethereal", new TargetWood("warped", false),
+            "eucalyptus", new TargetWood("origin_oak", true),
+            "mangrove", new TargetWood("pale_oak", false),
+            "sacred_oak", new TargetWood("origin_oak", true));
     private static final Map<String, TargetWood> TARGET_WOODS = Map.ofEntries(
             Map.entry("cherry", new TargetWood("cherry", false)),
             Map.entry("ebony", new TargetWood("hellbark", true)),
@@ -68,6 +74,25 @@ public final class LegacyPaddedBenchMappings {
         String back = "chair_wood_ironage_bench_back_padded_red_single_";
         if (path.startsWith(back)) return id(path.replaceFirst("_red_single_", "_" + color + "_single_"));
         if (path.startsWith(regular)) return id(path.replaceFirst("_red_single_", "_" + color + "_single_"));
+        return null;
+    }
+
+    /**
+     * Maps any furniture form made from a retired BOP wood to its documented
+     * visual fallback. Cherry is deliberately left to the parent mod, which
+     * owns the complete BOP-cherry-to-vanilla-cherry mapping.
+     */
+    public static Identifier retiredFurnitureTarget(Identifier legacyId) {
+        if (legacyId == null || !NAMESPACE.equals(legacyId.getNamespace())) return null;
+        String path = legacyId.getPath();
+        for (Map.Entry<String, TargetWood> entry : RETIRED_BOP_WOODS.entrySet()) {
+            String suffix = "_biomesoplenty_" + entry.getKey();
+            if (!path.endsWith(suffix)) continue;
+            TargetWood target = entry.getValue();
+            String targetSuffix = target.biomesOPlenty()
+                    ? "_biomesoplenty_" + target.wood() : "_" + target.wood();
+            return id(path.substring(0, path.length() - suffix.length()) + targetSuffix);
+        }
         return null;
     }
 

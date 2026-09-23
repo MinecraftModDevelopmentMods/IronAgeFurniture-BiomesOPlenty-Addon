@@ -109,6 +109,13 @@ java {
     withJavadocJar()
 }
 
+sourceSets {
+    gameTest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
 fgtools.configure('slimelauncher') {
     javaLauncher.set(javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
@@ -133,6 +140,13 @@ tasks.named('compileTestJava', JavaCompile) {
     outputs.cacheIf('merged Forge test output') { false }
 }
 tasks.named('processTestResources') { outputs.cacheIf('merged Forge test output') { false } }
+tasks.named('compileGameTestJava', JavaCompile) {
+    options.compilerArgs.add('-proc:none')
+    outputs.cacheIf('merged Forge GameTest output') { false }
+}
+tasks.named('processGameTestResources') {
+    outputs.cacheIf('merged Forge GameTest output') { false }
+}
 tasks.withType(Javadoc).configureEach {
     failOnError = false
     options.encoding = 'UTF-8'
@@ -213,6 +227,7 @@ eclipse {
             }.each { entry ->
                 if (entry.path == 'src/main/java' || entry.path == resourcesPath) entry.output = 'bin/main'
                 else if (entry.path.startsWith('src/test/')) entry.output = 'bin/test'
+                else if (entry.path.startsWith('src/gameTest/')) entry.output = 'bin/gameTest'
             }
         }
     }
@@ -236,6 +251,12 @@ minecraft {
         }
         register('client')
         register('server') { args '--nogui' }
+        register('gameTestServer') {
+            workingDir.convention layout.projectDirectory.dir(
+                    providers.gradleProperty('gameTestRunDirectory').getOrElse('build/game-test-run'))
+            systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
+            mods { iafbopaddon { source sourceSets.gameTest } }
+        }
     }
 }
 
@@ -249,18 +270,48 @@ def prepareDevelopmentMod = tasks.register('prepareDevelopmentMod', Sync) {
     into developmentModOutput
 }
 
+def compiledGameTestClasses = layout.buildDirectory.dir('compiled-classes/gameTest')
+tasks.named('compileGameTestJava', JavaCompile) {
+    destinationDirectory.set(compiledGameTestClasses)
+}
+def mergeGameTestClasses = tasks.register('mergeGameTestClasses') {
+    dependsOn tasks.named('compileGameTestJava'), tasks.named('processGameTestResources')
+    doLast {
+        project.copy {
+            from compiledGameTestClasses
+            into sourceSets.gameTest.output.resourcesDir
+        }
+    }
+}
+tasks.named('gameTestClasses') { dependsOn mergeGameTestClasses }
+
+def gameTestModOutput = layout.buildDirectory.dir('forge-run-mod-classes/gameTest')
+def prepareGameTestMod = tasks.register('prepareGameTestMod', Sync) {
+    group = 'verification'
+    description = 'Merges production and GameTest output for Forge 66 discovery.'
+    dependsOn tasks.named('gameTestClasses')
+    from sourceSets.main.output
+    from sourceSets.gameTest.output
+    into gameTestModOutput
+}
+
 tasks.withType(JavaExec).configureEach { JavaExec runTask ->
-    if (['runClient', 'runServer'].contains(runTask.name)) {
-        runTask.dependsOn prepareDevelopmentMod
+    if (['runClient', 'runServer', 'runGameTestServer'].contains(runTask.name)) {
+        def mergedOutput = runTask.name == 'runGameTestServer'
+                ? gameTestModOutput : developmentModOutput
+        runTask.dependsOn(runTask.name == 'runGameTestServer'
+                ? prepareGameTestMod : prepareDevelopmentMod)
         runTask.doFirst {
-            Set<String> splitOutputs = sourceSets.main.output.files.collect {
+            Set<String> splitOutputs = (sourceSets.main.output.files
+                    + (runTask.name == 'runGameTestServer' ? sourceSets.gameTest.output.files : []))
+                    .collect {
                 it.canonicalFile.absolutePath
             } as Set
             Collection<File> targetClasspath = runTask.classpath.files.findAll {
                 !splitOutputs.contains(it.canonicalFile.absolutePath)
             }
-            runTask.classpath = files(developmentModOutput, targetClasspath)
-            runTask.environment 'MOD_CLASSES', "${project.mod_id}%%${developmentModOutput.get().asFile}"
+            runTask.classpath = files(mergedOutput, targetClasspath)
+            runTask.environment 'MOD_CLASSES', "${project.mod_id}%%${mergedOutput.get().asFile}"
             File modsDirectory = new File(runTask.workingDir, 'mods')
             if (!modsDirectory.isDirectory() && !modsDirectory.mkdirs()) {
                 throw new GradleException("Could not create development mods directory: ${modsDirectory}")
@@ -422,9 +473,33 @@ def prepareDevelopmentRuntimeMods = tasks.register('prepareDevelopmentRuntimeMod
         }
     }
 }
+def prepareGameTestRuntimeMods = tasks.register('prepareGameTestRuntimeMods') {
+    group = 'verification'
+    description = 'Copies the pinned BOP, GlitchCore and TerraBlender jars into the GameTest server.'
+    dependsOn verifyDevelopmentRuntimeMods
+    inputs.files developmentRuntimeCacheFiles
+    File modsDirectory = layout.projectDirectory.dir(
+            "${providers.gradleProperty('gameTestRunDirectory').getOrElse('build/game-test-run')}/mods").asFile
+    outputs.files developmentRuntimeDefinitions.collect { new File(modsDirectory, it.file) }
+    doLast {
+        if (!modsDirectory.isDirectory() && !modsDirectory.mkdirs()) {
+            throw new GradleException("Could not create GameTest mods directory: ${modsDirectory}")
+        }
+        developmentRuntimeDefinitions.each { runtimeMod ->
+            File target = new File(modsDirectory, runtimeMod.file)
+            File cached = new File(developmentRuntimeCacheDirectory, runtimeMod.file)
+            Files.copy(cached.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            if (sha256Of(target) != runtimeMod.sha256.toLowerCase(Locale.ROOT)) {
+                throw new GradleException("Staged GameTest runtime checksum mismatch for ${target.name}")
+            }
+        }
+    }
+}
 tasks.withType(JavaExec).configureEach { JavaExec runTask ->
     if (['runClient', 'runServer'].contains(runTask.name)) {
         runTask.dependsOn prepareDevelopmentRuntimeMods
+    } else if (runTask.name == 'runGameTestServer') {
+        runTask.dependsOn prepareGameTestRuntimeMods
     }
 }
 

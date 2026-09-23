@@ -138,7 +138,7 @@ public final class LegacyPaddedBenchMigration {
         if (changed) chunk.markUnsaved();
     }
 
-    private static long migrateChunkBlocks(LevelChunk chunk) {
+    static long migrateChunkBlocks(LevelChunk chunk) {
         long converted = 0L;
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int y = chunk.getMinY(); y <= chunk.getMaxY(); ++y) {

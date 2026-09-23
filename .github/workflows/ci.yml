@@ -73,6 +73,17 @@ jobs:
           ./gradlew clean check build javadoc verifyFurnitureCatalog verifyReleaseArtifacts \
             writeReleaseChecksums verifyReleaseChecksums prepareEclipse \
             verifyEclipseProductionClasspath "${args[@]}"
+      - name: Run legacy migration GameTests
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --no-daemon --stacktrace --max-workers=2
+            "-Dorg.gradle.java.installations.paths=$JAVA_HOME"
+            -Dorg.gradle.java.installations.auto-detect=false
+            -Dorg.gradle.java.installations.auto-download=false
+          )
+          ./gradlew runGameTestServer -PgameTestRunDirectory=build/game-test-run "${args[@]}"
       - name: Upload audited release candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -96,3 +107,5 @@ jobs:
             build/test-results/**
             build/reports/**
             run/logs/**
+            build/game-test-run/logs/**
+            build/game-test-run/crash-reports/**

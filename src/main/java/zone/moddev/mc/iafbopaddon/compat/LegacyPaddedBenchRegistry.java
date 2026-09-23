@@ -74,9 +74,19 @@ public final class LegacyPaddedBenchRegistry {
     }
 
     private static void onMissingMappings(MissingMappingsEvent event) {
+        for (MissingMappingsEvent.Mapping<Block> mapping : event.getMappings(
+                ForgeRegistries.Keys.BLOCKS, LegacyPaddedBenchMappings.NAMESPACE)) {
+            Identifier targetId = LegacyPaddedBenchMappings.retiredFurnitureTarget(mapping.getKey());
+            if (targetId == null) continue;
+            Block target = ForgeRegistries.BLOCKS.getValue(targetId);
+            if (target != null) mapping.remap(target);
+        }
         for (MissingMappingsEvent.Mapping<Item> mapping : event.getMappings(
                 ForgeRegistries.Keys.ITEMS, LegacyPaddedBenchMappings.NAMESPACE)) {
             Identifier targetId = ITEM_REMAPS.get(mapping.getKey());
+            if (targetId == null) {
+                targetId = LegacyPaddedBenchMappings.retiredFurnitureTarget(mapping.getKey());
+            }
             if (targetId == null) continue;
             Item target = ForgeRegistries.ITEMS.getValue(targetId);
             if (target != null) mapping.remap(target);
