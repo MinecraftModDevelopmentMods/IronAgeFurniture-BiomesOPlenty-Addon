@@ -1064,6 +1064,16 @@ tasks.register('syncForge66EclipseLaunches') {
         String mainClass = 'net.minecraftforge.userdev.LaunchTesting'
         String mainOutput = new File(projectDir, 'bin/main').absolutePath
         String modClasses = "${project.mod_id}%%${mainOutput}"
+        List<File> eclipseRuntimeClasspath = configurations.runtimeClasspath.files
+                .sort { left, right ->
+                    left.absolutePath.compareToIgnoreCase(right.absolutePath)
+                }
+        String eclipseRuntimeEntries = eclipseRuntimeClasspath.collect { dependency ->
+            String descriptor = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' +
+                    "<runtimeClasspathEntry externalArchive=\"${dependency.absolutePath}\" " +
+                    'type="2" path="5" />'
+            "    <listEntry value=\"${groovy.xml.XmlUtil.escapeXml(descriptor)}\"/>"
+        }.join('\r\n')
         copy {
             from processedMainResourcesDirectory()
             into mainOutput
@@ -1094,6 +1104,15 @@ tasks.register('syncForge66EclipseLaunches') {
             text = text.replaceFirst(/<mapEntry key="MOD_CLASSES" value="[^"]*"\/>/,
                     java.util.regex.Matcher.quoteReplacement(
                             "<mapEntry key=\"MOD_CLASSES\" value=\"${modClasses}\"/>"))
+            def buildshipClasspathPattern = java.util.regex.Pattern.compile(
+                    '(?m)^\\h*<listEntry value="[^"]*org\\.eclipse\\.buildship\\.core\\.gradleclasspathcontainer[^"]*"\\/>\\r?\\n?')
+            def buildshipClasspathEntry = buildshipClasspathPattern.matcher(text)
+            if (!buildshipClasspathEntry.find()) {
+                throw new GradleException(
+                        "ForgeGradle generated an unexpected Buildship classpath entry in ${launch.name}")
+            }
+            text = buildshipClasspathEntry.replaceFirst(
+                    java.util.regex.Matcher.quoteReplacement("${eclipseRuntimeEntries}\r\n"))
             def argumentsMatch = text =~ /(<stringAttribute key="org\.eclipse\.jdt\.launching\.PROGRAM_ARGUMENTS" value=")([^"]*)("\/>)/
             if (argumentsMatch.count != 1) {
                 throw new GradleException("ForgeGradle generated malformed program arguments in ${launch.name}")
@@ -1192,7 +1211,13 @@ tasks.register('verifyEclipseProductionClasspath') {
             String launchText = launch.getText('UTF-8')
             if (!launchText.contains('ATTR_EXCLUDE_TEST_CODE')
                     || !launchText.contains("key=\"MOD_CLASSES\" value=\"${project.mod_id}%%${new File(projectDir, 'bin/main').absolutePath}\"")
-                    || !launchText.contains("key=\"org.eclipse.jdt.launching.PROJECT_ATTR\" value=\"${eclipseWorkspaceProjectName}\"")) {
+                    || !launchText.contains("key=\"org.eclipse.jdt.launching.PROJECT_ATTR\" value=\"${eclipseWorkspaceProjectName}\"")
+                    || launchText.contains('org.eclipse.buildship.core.gradleclasspathcontainer')
+                    || launchText.contains('mixinextras-common-')
+                    || !launchText.contains('mixinextras-forge-0.5.4.jar')
+                    || configurations.runtimeClasspath.files.any {
+                        !launchText.contains(it.absolutePath)
+                    }) {
                 throw new GradleException("Eclipse launch is not production-only: ${launch.name}")
             }
         }
