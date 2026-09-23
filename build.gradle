@@ -165,7 +165,9 @@ tasks.register('verifyBuildEnvironment') {
 }
 tasks.withType(JavaCompile).configureEach { dependsOn tasks.named('verifyBuildEnvironment') }
 
-def eclipseWorkspaceProjectName = 'IronAgeFurnitureBiomesOPlentyAddon'
+// Keep the Eclipse project name aligned with the checkout folder when the
+// project is imported directly beneath its dedicated workspace root.
+def eclipseWorkspaceProjectName = rootProject.name
 def processedMainResourcesDirectory = { sourceSets.main.output.resourcesDir }
 def processedMainResourcesPath = {
     project.relativePath(processedMainResourcesDirectory()).replace('\\', '/')
@@ -185,16 +187,22 @@ eclipse {
             classpath.entries.findAll { entry ->
                 entry instanceof org.gradle.plugins.ide.eclipse.model.Output
             }.each { entry -> entry.path = 'bin/default' }
+            String resourcesPath = processedMainResourcesPath()
+            Set<String> replacedResourcePaths = [
+                    'src/main/resources',
+                    'src/generated/resources',
+                    'build/resources/main'
+            ] as Set
             classpath.entries.removeAll { entry ->
                 entry instanceof org.gradle.plugins.ide.eclipse.model.SourceFolder
-                        && ['src/main/resources', 'src/generated/resources'].contains(entry.path)
+                        && entry.path != resourcesPath
+                        && replacedResourcePaths.contains(entry.path)
             }
             Set<String> libraryPaths = new LinkedHashSet<>()
             classpath.entries.removeAll { entry ->
                 if (!(entry instanceof org.gradle.plugins.ide.eclipse.model.Library)) return false
                 !libraryPaths.add(entry.path.replace('\\', '/').toLowerCase(Locale.ROOT))
             }
-            String resourcesPath = processedMainResourcesPath()
             if (!classpath.entries.any { it.path == resourcesPath }) {
                 classpath.entries.add(new org.gradle.plugins.ide.eclipse.model.SourceFolder(resourcesPath, 'bin/main'))
             }
@@ -1030,7 +1038,11 @@ tasks.register('verifyEclipseProductionClasspath') {
         if (!duplicates.isEmpty()) throw new GradleException("Duplicate Eclipse libraries: ${duplicates}")
         String text = classpath.getText('UTF-8')
         String resourcesPath = processedMainResourcesPath()
-        if (!text.contains("path=\"${resourcesPath}\"") || text.contains('path="src/main/resources"')) {
+        if (!text.contains("path=\"${resourcesPath}\"")
+                || text.contains('path="src/main/resources"')
+                || text.contains('path="src/generated/resources"')
+                || (resourcesPath != 'build/resources/main'
+                        && text.contains('path="build/resources/main"'))) {
             throw new GradleException('Eclipse must use processed production resources in bin/main')
         }
         ['Client', 'Server'].each { runName ->
