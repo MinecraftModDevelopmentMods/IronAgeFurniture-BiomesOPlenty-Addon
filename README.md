@@ -21,6 +21,8 @@ Install all of the following mods:
 - Biomes O' Plenty `26.3.0.0.2` or a newer 26.3 release
 - The GlitchCore and TerraBlender versions required by Biomes O' Plenty
 
+Biomes O' Plenty `26.3.0.0.11` requires TerraBlender `26.3.0.0.6` or newer. The add-on has been checked with Biomes O' Plenty `26.3.0.0.11`, GlitchCore `26.3.0.0.3`, and TerraBlender `26.3.0.0.7`.
+
 This is an add-on, not a replacement for either parent mod. Minecraft will show a clear dependency error if Iron Age Furniture or Biomes O' Plenty is missing or incompatible.
 
 ## Updating an existing world

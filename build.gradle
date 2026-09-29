@@ -433,8 +433,12 @@ tasks.register('verifyIntegrationTextures') {
             logger.lifecycle("Skipping external BOP jar path audit; provide -PbiomesOPlentyJar=<published jar>. Static resource references remain checked.")
             return
         }
-        if (sha256Of(bopJar) != '86aa585d0a0cb363a878c9a09fbed2ba28c32f7f2b84cda2e2bea4f68a3299bf') {
-            throw new GradleException('Biomes O Plenty test jar SHA-256 mismatch')
+        Map manifest = new JsonSlurper().parse(file('gradle/verification-dependencies.json')) as Map
+        Map pinnedJar = ((List<Map>) manifest.mods).find { mod ->
+            mod.modId == 'biomesoplenty' && mod.file == bopJar.name
+        }
+        if (pinnedJar == null || sha256Of(bopJar) != pinnedJar.sha256) {
+            throw new GradleException('Biomes O Plenty test jar is not pinned or its SHA-256 does not match')
         }
         Set<String> entries
         new ZipFile(bopJar).withCloseable { zip -> entries = zip.entries().collect { it.name } as Set<String> }
