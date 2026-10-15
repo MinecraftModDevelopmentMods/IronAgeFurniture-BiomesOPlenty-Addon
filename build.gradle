@@ -433,8 +433,12 @@ tasks.register('verifyIntegrationTextures') {
             logger.lifecycle("Skipping external BOP jar path audit; provide -PbiomesOPlentyJar=<published jar>. Static resource references remain checked.")
             return
         }
-        if (sha256Of(bopJar) != '86aa585d0a0cb363a878c9a09fbed2ba28c32f7f2b84cda2e2bea4f68a3299bf') {
-            throw new GradleException('Biomes O Plenty test jar SHA-256 mismatch')
+        Map manifest = new JsonSlurper().parse(file('gradle/verification-dependencies.json')) as Map
+        Map pinnedJar = ((List<Map>) manifest.mods).find { mod ->
+            mod.modId == 'biomesoplenty' && mod.file == bopJar.name
+        }
+        if (pinnedJar == null || sha256Of(bopJar) != pinnedJar.sha256) {
+            throw new GradleException('Biomes O Plenty test jar is not pinned or its SHA-256 does not match')
         }
         Set<String> entries
         new ZipFile(bopJar).withCloseable { zip -> entries = zip.entries().collect { it.name } as Set<String> }
@@ -543,13 +547,14 @@ tasks.register('verifyExpandedMetadata') {
 tasks.register('verifyRepositoryHygiene') {
     group = 'verification'
     doLast {
-        List<String> forbidden = ['.gradle/', 'build/', 'bin/', 'run/', '.idea/', '*.launch']
+        List<String> forbidden = ['.gradle/', 'build/', 'bin/', 'run/', '.idea/', '.eclipse/', '*.launch']
         List<String> tracked = providers.exec {
             commandLine 'git', 'ls-files'
         }.standardOutput.asText.get().readLines()
         List<String> bad = tracked.findAll { path ->
             path.startsWith('.gradle/') || path.startsWith('build/') || path.startsWith('bin/')
-                    || path.startsWith('run/') || path.startsWith('.idea/') || path.endsWith('.launch')
+                    || path.startsWith('run/') || path.startsWith('.idea/') || path.startsWith('.eclipse/')
+                    || path.endsWith('.launch')
         }
         if (!bad.isEmpty()) throw new GradleException("Generated files are tracked: ${bad}")
         tracked.each { path ->
@@ -749,7 +754,7 @@ tasks.register('verifyPreparedReleaseArtifacts') {
         Map<String, String> declared = new File(prepared, 'SHA256SUMS').readLines('UTF-8')
                 .findAll { !it.trim().isEmpty() }.collectEntries { line ->
                     def parts = line.split(/\s+/, 2)
-                    [(parts[1]): parts[0].toUpperCase(Locale.ROOT)]
+                    [(parts[1]): parts[0].toLowerCase(Locale.ROOT)]
                 }
         if (declared.keySet().sort() != expectedReleaseFiles.sort()) {
             throw new GradleException('Prepared checksums do not list exactly the release jars')

@@ -10,20 +10,44 @@
       "source": "https://modrinth.com/mod/biomes-o-plenty/version/5xfum0m1"
     },
     {
+      "modId": "biomesoplenty",
+      "role": "current-compatibility",
+      "version": "26.3.0.0.11",
+      "file": "BiomesOPlenty-neoforge-26.3-26.3.0.0.11.jar",
+      "sha256": "5116d22b53561338561284442bdc165359e172f619c57d00392499362535064e",
+      "source": "https://modrinth.com/mod/biomes-o-plenty/version/knIsj6ct"
+    },
+    {
       "modId": "glitchcore",
-      "role": "dependency",
+      "role": "minimum-compatibility",
       "version": "26.3.0.0.2",
       "file": "GlitchCore-neoforge-26.3-26.3.0.0.2.jar",
       "sha256": "247c9f70f2bd09c10e87dd2feadb7191206aafa3e28620f0d5fb630438120d92",
       "source": "https://modrinth.com/mod/glitchcore/version/oony3ZtX"
     },
     {
+      "modId": "glitchcore",
+      "role": "current-compatibility",
+      "version": "26.3.0.0.3",
+      "file": "GlitchCore-neoforge-26.3-26.3.0.0.3.jar",
+      "sha256": "c92cd781127a9cc889e47ac0e627ddc12dcb37fe27522e171c75959c23983372",
+      "source": "https://modrinth.com/mod/glitchcore/version/5FMzBcg1"
+    },
+    {
       "modId": "terrablender",
-      "role": "dependency",
+      "role": "minimum-compatibility",
       "version": "26.3.0.0.1",
       "file": "TerraBlender-neoforge-26.3-26.3.0.0.1.jar",
       "sha256": "7ac85af97149d73a8d5d09c2958ae4a3bc2437d43f37f9422ee9531e908a1804",
       "source": "https://modrinth.com/mod/terrablender/version/WzcFwqjR"
+    },
+    {
+      "modId": "terrablender",
+      "role": "current-compatibility",
+      "version": "26.3.0.0.7",
+      "file": "TerraBlender-neoforge-26.3-26.3.0.0.7.jar",
+      "sha256": "de0ab31ed08eeef228c51b688fca50984588d322df93d1b8c9b0e87d3ee547d6",
+      "source": "https://modrinth.com/mod/terrablender/version/Z28Rt8Ne"
     }
   ]
 }
