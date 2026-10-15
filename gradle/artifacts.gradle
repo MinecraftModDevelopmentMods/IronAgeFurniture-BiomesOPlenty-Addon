@@ -1,0 +1,115 @@
+import org.apache.tools.ant.filters.FixCrLfFilter
+
+// Expand mod metadata and package the main, sources and Javadoc jars.
+ext.archiveTextSuffixes = ['.cfg', '.html', '.java', '.json', '.lang', '.mcmeta', '.md', '.properties', '.txt', '.xml', '.toml']
+ext.archiveTextPatterns = archiveTextSuffixes.collect { "**/*${it}".toString() }
+ext.normalizeArchiveLineEndings = { details ->
+    details.filter(FixCrLfFilter,
+            eol: FixCrLfFilter.CrLf.newInstance('lf'),
+            eof: FixCrLfFilter.AddAsisRemove.newInstance('asis'))
+}
+
+tasks.named('processResources', ProcessResources) {
+    filteringCharset = 'UTF-8'
+    def properties = [
+            version: project.version,
+            mod_id: project.mod_id,
+            mod_name: project.mod_name,
+            mod_license: project.mod_license,
+            mod_authors: project.mod_authors,
+            mod_description: project.mod_description,
+            minecraft_version_range: project.minecraft_version_range,
+            neo_version_range: project.neo_version_range,
+            ironagefurniture_version_range: project.ironagefurniture_version_range,
+            biomesoplenty_version_range: project.biomesoplenty_version_range,
+            glitchcore_version_range: project.glitchcore_version_range,
+            terrablender_version_range: project.terrablender_version_range
+    ]
+    inputs.properties properties
+    filesMatching(['META-INF/neoforge.mods.toml']) { expand properties }
+    filesMatching(archiveTextPatterns, normalizeArchiveLineEndings)
+    from('README.md') { into 'META-INF/iafbopaddon/docs' }
+    from('CHANGELOG.md') { into 'META-INF/iafbopaddon/docs' }
+    from('docs/VERSIONS.md') { into 'META-INF/iafbopaddon/docs' }
+}
+
+jar {
+    filesMatching(archiveTextPatterns, normalizeArchiveLineEndings)
+    manifest {
+        attributes([
+                'Maven-Artifact': "${project.group}:${base.archivesName.get()}:${project.version}",
+                'Implementation-Title': project.mod_name,
+                'Implementation-Version': project.version
+        ])
+    }
+}
+tasks.named('sourcesJar', Jar) {
+    filesMatching(archiveTextPatterns, normalizeArchiveLineEndings)
+    manifest {
+        attributes([
+                'Maven-Artifact': "${project.group}:${base.archivesName.get()}:${project.version}:sources",
+                'Implementation-Title': "${project.mod_name}-sources",
+                'Implementation-Version': project.version
+        ])
+    }
+}
+tasks.named('javadocJar', Jar) {
+    filesMatching(archiveTextPatterns, normalizeArchiveLineEndings)
+    manifest {
+        attributes([
+                'Maven-Artifact': "${project.group}:${base.archivesName.get()}:${project.version}:javadoc",
+                'Implementation-Title': "${project.mod_name}-javadoc",
+                'Implementation-Version': project.version
+        ])
+    }
+}
+
+ext.expectedReleaseFiles = [
+        "${base.archivesName.get()}-${project.version}.jar",
+        "${base.archivesName.get()}-${project.version}-sources.jar",
+        "${base.archivesName.get()}-${project.version}-javadoc.jar"
+]
+ext.preparedReleaseDir = providers.gradleProperty('preparedReleaseDir')
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = project.group.toString()
+            artifactId = base.archivesName.get()
+            version = project.version.toString()
+            if (preparedReleaseDir.isPresent()) {
+                File prepared = file(preparedReleaseDir.get())
+                artifact(new File(prepared, expectedReleaseFiles[0]))
+                artifact(new File(prepared, expectedReleaseFiles[1])) { classifier = 'sources' }
+                artifact(new File(prepared, expectedReleaseFiles[2])) { classifier = 'javadoc' }
+            } else {
+                artifact(tasks.named('jar'))
+                artifact(tasks.named('sourcesJar'))
+                artifact(tasks.named('javadocJar'))
+            }
+            pom {
+                name = project.mod_name
+                description = project.mod_description
+                url = 'https://github.com/MinecraftModDevelopmentMods/IronAgeFurniture-BiomesOPlenty-Addon'
+                licenses {
+                    license {
+                        name = 'GNU Lesser General Public License v2.1'
+                        url = 'https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html'
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'release'
+            url = uri(System.getenv('MAVEN_UPLOAD_URL') ?: 'https://invalid.invalid/missing-maven-upload-url')
+            credentials {
+                username = System.getenv('MAVEN_UPLOAD_USERNAME') ?: ''
+                password = System.getenv('MAVEN_UPLOAD_PASSWORD') ?: ''
+            }
+        }
+    }
+}
+
+ext.expectedCoordinate = "${project.group}:${base.archivesName.get()}:${project.version}"

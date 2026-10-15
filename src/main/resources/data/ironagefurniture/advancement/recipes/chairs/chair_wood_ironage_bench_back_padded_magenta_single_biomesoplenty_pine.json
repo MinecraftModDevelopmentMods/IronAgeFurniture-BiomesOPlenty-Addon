@@ -29,5 +29,11 @@
             "ironagefurniture:chair_wood_ironage_bench_back_padded_magenta_single_biomesoplenty_pine"
         ]
     },
-    "sends_telemetry_event": false
+    "sends_telemetry_event": false,
+    "neoforge:conditions": [
+        {
+            "type": "ironagefurniture:feature_enabled",
+            "feature": "benches"
+        }
+    ]
 }

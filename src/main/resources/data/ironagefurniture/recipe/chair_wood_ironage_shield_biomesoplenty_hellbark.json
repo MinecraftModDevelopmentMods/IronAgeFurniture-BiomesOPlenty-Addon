@@ -1,10 +1,17 @@
 {
-    "type": "minecraft:crafting_shapeless",
+    "type": "ironagefurniture:shield_chair",
     "ingredients": [
         "minecraft:shield",
         "ironagefurniture:chair_wood_ironage_classic_biomesoplenty_hellbark"
     ],
     "result": {
         "id": "ironagefurniture:chair_wood_ironage_shield_biomesoplenty_hellbark"
-    }
+    },
+    "group": "ironagefurniture:chair_wood_ironage_shield_biomesoplenty_hellbark",
+    "neoforge:conditions": [
+        {
+            "type": "ironagefurniture:feature_enabled",
+            "feature": "shieldChairs"
+        }
+    ]
 }

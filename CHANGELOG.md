@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0.2603002 — local candidate
+
+- Adds wingbacks, thrones, wooden beds and canopy beds, including doubles, in all sixteen colours for the fourteen supported wood families.
+- Adds shield storage using the core's shield-chair behaviour and renderers.
+- Organises furniture in the core's Chairs, Benches and Beds tabs, with translated names and English fallbacks.
+- Requires Biomes O' Plenty `26.3.0.0.15` or newer, GlitchCore `26.3.0.0.5` or newer, and TerraBlender `26.3.0.0.9` or newer for Minecraft 26.3.
+- Requires the matching Iron Age Furniture `0.4.0.2603002` core.
+- Stops older, incompatible biome dependency combinations at the loader's dependency check instead of allowing them to fail later during startup.
+
 ## 0.3.0.2603002
 
 First release for Minecraft 26.3 on NeoForge.

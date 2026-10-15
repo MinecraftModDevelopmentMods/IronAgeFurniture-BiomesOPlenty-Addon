@@ -16,14 +16,14 @@ The add-on reports a short migration summary in the game log. Loading the world 
 
 ## Padded bench colours
 
-The currently released 1.10 and 1.12 furniture stored every padded bench as red. Those benches remain red after migration.
+The older Phase 2 versions stored every padded bench as red. Those benches remain red after migration.
 
-The newer legacy format supports sixteen upholstery colours:
+Phase 3 and Phase 4 legacy formats can contain sixteen upholstery colours:
 
 - Red, orange, magenta, light blue, yellow, lime, pink and gray
 - Light gray, cyan, purple, blue, brown, green, white and black
 
-When colour information is present, the add-on keeps it. If that information is absent or damaged, the bench becomes red so that existing worlds retain the appearance used by the released versions.
+When colour information is present, the add-on keeps it. If that information is absent or damaged, the bench becomes red so that old worlds retain their original appearance.
 
 Bench direction and joined shape are retained wherever the old and new blocks share the same property. Waterlogged furniture also remains waterlogged when the saved state contains that information.
 
@@ -47,3 +47,9 @@ These are visual compatibility choices made by Iron Age Furniture. They do not m
 This migration covers Iron Age Furniture blocks and items only. It does not convert Biomes O' Plenty terrain, plants or other contents of an old world, and it cannot make Minecraft 26.3 open a world format that Minecraft itself cannot read.
 
 If Minecraft refuses to open the world, return to the untouched backup and use the normal Minecraft upgrade sequence. Do not continue experimenting on the only copy of a valued world.
+
+## Phase 4 verification
+
+The current local candidate has passed first and second loads of the supported 1.10/1.12 furniture fixtures and existing 26.3 BOP saves. The tested fixtures load directly through the compatibility bridge; no intermediate Minecraft save was needed for those particular cases. A hash-checked Sylvester furniture extraction also passes both loads, without altering its source world.
+
+This is furniture compatibility testing, not a promise that the rest of an old modpack can be converted. Missing BYG or Immersive Engineering furniture and unrelated old biome terrain are outside this add-on's coverage. The local candidates pass the final build and repeat-build gates; publication remains a separate step.
