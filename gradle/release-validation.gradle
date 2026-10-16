@@ -1,0 +1,115 @@
+import java.util.jar.Manifest
+import java.util.zip.ZipFile
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+
+// Validate the exact artifact bundle before checksums or publication are accepted.
+tasks.register('verifyReleaseArtifacts') {
+    group = 'verification'
+    dependsOn tasks.named('assemble'), tasks.named('verifyExpandedMetadata'), tasks.named('verifyFurnitureCatalog'), tasks.named('verifyFurnitureInventory')
+    doLast {
+        File libs = layout.buildDirectory.dir('libs').get().asFile
+        List<File> jars = (libs.listFiles() ?: [] as File[]).findAll { it.name.endsWith('.jar') }.sort { it.name }
+        if (jars.collect { it.name } != expectedReleaseFiles.sort()) {
+            throw new GradleException("Expected exactly ${expectedReleaseFiles}, found ${jars.collect { it.name }}")
+        }
+        File mainJar = new File(libs, "${base.archivesName.get()}-${project.version}.jar")
+        new ZipFile(mainJar).withCloseable { zip ->
+            ['META-INF/neoforge.mods.toml', 'zone/moddev/mc/iafbopaddon/IAFBiomesOPlentyAddon.class'].each {
+                if (zip.getEntry(it) == null) throw new GradleException("Release jar is missing ${it}")
+            }
+            if (zip.entries().any { it.name.startsWith('biomesoplenty/') || it.name.startsWith('assets/biomesoplenty/') }) {
+                throw new GradleException('Release jar redistributes Biomes O Plenty content')
+            }
+            zip.entries().findAll { it.name.endsWith('.class') }.each { entry ->
+                byte[] header = zip.getInputStream(entry).withCloseable { it.readNBytes(8) }
+                int major = ((header[6] & 0xff) << 8) | (header[7] & 0xff)
+                if (major != 69) throw new GradleException("${entry.name} uses class major ${major}; expected 69")
+            }
+            Manifest manifest = new Manifest(zip.getInputStream(zip.getEntry('META-INF/MANIFEST.MF')))
+            if (manifest.mainAttributes.getValue('Maven-Artifact') != expectedCoordinate) {
+                throw new GradleException('Release manifest has the wrong Maven coordinate')
+            }
+        }
+    }
+}
+
+tasks.register('writeReleaseChecksums') {
+    group = 'verification'
+    dependsOn tasks.named('verifyReleaseArtifacts')
+    inputs.files(expectedReleaseFiles.collect { layout.buildDirectory.file("libs/${it}") })
+    outputs.file layout.buildDirectory.file('release/SHA256SUMS')
+    doLast {
+        File output = layout.buildDirectory.file('release/SHA256SUMS').get().asFile
+        output.parentFile.mkdirs()
+        File libs = layout.buildDirectory.dir('libs').get().asFile
+        output.setText(expectedReleaseFiles.sort().collect { "${sha256Of(new File(libs, it))}  ${it}" }.join('\n') + '\n', 'UTF-8')
+    }
+}
+
+tasks.register('verifyReleaseChecksums') {
+    group = 'verification'
+    dependsOn tasks.named('writeReleaseChecksums')
+    doLast {
+        File libs = layout.buildDirectory.dir('libs').get().asFile
+        layout.buildDirectory.file('release/SHA256SUMS').get().asFile.readLines('UTF-8').each { line ->
+            def parts = line.split(/\s+/, 2)
+            if (sha256Of(new File(libs, parts[1])) != parts[0]) throw new GradleException("Checksum mismatch for ${parts[1]}")
+        }
+    }
+}
+
+tasks.register('validateMavenReleaseCredentials') {
+    group = 'publishing'
+    dependsOn tasks.named('validateCurseForgeProjectId')
+    doLast {
+        ['MAVEN_UPLOAD_URL', 'MAVEN_UPLOAD_USERNAME', 'MAVEN_UPLOAD_PASSWORD'].each {
+            if (!System.getenv(it)) throw new GradleException("${it} is required")
+        }
+        if (System.getenv('MAVEN_UPLOAD_URL').startsWith('file:')) {
+            throw new GradleException('Maven release publication must use a remote repository')
+        }
+    }
+}
+
+tasks.register('verifyPreparedReleaseArtifacts') {
+    group = 'verification'
+    description = 'Audits a previously built immutable release bundle before publication.'
+    doLast {
+        if (!preparedReleaseDir.isPresent()) {
+            throw new GradleException('preparedReleaseDir is required')
+        }
+        File prepared = file(preparedReleaseDir.get())
+        List<String> expectedBundle = (expectedReleaseFiles + ['SHA256SUMS', 'CHANGELOG.md']).sort()
+        List<String> actualBundle = (prepared.listFiles() ?: [] as File[])
+                .findAll { it.isFile() }.collect { it.name }.sort()
+        if (actualBundle != expectedBundle) {
+            throw new GradleException("Expected prepared bundle ${expectedBundle}, found ${actualBundle}")
+        }
+        Map<String, String> declared = new File(prepared, 'SHA256SUMS').readLines('UTF-8')
+                .findAll { !it.trim().isEmpty() }.collectEntries { line ->
+                    def parts = line.split(/\s+/, 2)
+                    [(parts[1]): parts[0].toLowerCase(Locale.ROOT)]
+                }
+        if (declared.keySet().sort() != expectedReleaseFiles.sort()) {
+            throw new GradleException('Prepared checksums do not list exactly the release jars')
+        }
+        declared.each { name, expected ->
+            if (sha256Of(new File(prepared, name)) != expected) {
+                throw new GradleException("Prepared checksum mismatch for ${name}")
+            }
+        }
+    }
+}
+tasks.withType(PublishToMavenRepository).configureEach {
+    dependsOn tasks.named('validateMavenReleaseCredentials')
+    dependsOn(preparedReleaseDir.isPresent()
+            ? tasks.named('verifyPreparedReleaseArtifacts')
+            : tasks.named('verifyReleaseArtifacts'))
+}
+
+tasks.withType(PublishToMavenRepository).configureEach {
+    doFirst {
+        if (providers.gradleProperty('localCoreJar').isPresent())
+            throw new GradleException('Local staged-core builds cannot be published; use the normally pinned released dependency')
+    }
+}

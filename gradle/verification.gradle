@@ -1,0 +1,355 @@
+import groovy.json.JsonSlurper
+import java.util.zip.ZipFile
+
+// Catch incomplete catalogs, bad resources and accidental repository additions.
+tasks.register('verifyMavenCoordinates') {
+    group = 'verification'
+    dependsOn tasks.named('generatePomFileForMavenJavaPublication')
+    doLast {
+        if (expectedCoordinate != 'zone.moddev.mc:iron-age-furniture-biomes-o-plenty-addon:0.4.0.2603002') {
+            throw new GradleException("Unexpected Maven coordinate ${expectedCoordinate}")
+        }
+        String pom = layout.buildDirectory.file('publications/mavenJava/pom-default.xml').get().asFile.getText('UTF-8')
+        ['<groupId>zone.moddev.mc</groupId>', '<artifactId>iron-age-furniture-biomes-o-plenty-addon</artifactId>', '<version>0.4.0.2603002</version>'].each {
+            if (!pom.contains(it)) throw new GradleException("Generated POM is missing ${it}")
+        }
+    }
+}
+
+tasks.register('verifyFurnitureInventory') {
+    group = 'verification'
+    doLast {
+        File source = file('src/main/java/zone/moddev/mc/iafbopaddon/init/ModBOPBlocks.java')
+        String javaText = source.getText('UTF-8')
+        int registrations = (javaText =~ /public static DeferredHolder<Block, Block> chair_/).count
+        if (registrations != 546) throw new GradleException("Expected 546 BOP registrations, found ${registrations}")
+        Set<String> ids = (javaText =~ /register\("([^"]+)"/) .collect { it[1] } as Set<String>
+        if (ids.size() != 546 || !ids.every { it.contains('_biomesoplenty_') }) {
+            throw new GradleException('BOP registration IDs are incomplete or escaped the historical naming convention')
+        }
+        Map<String, Integer> expected = [
+                // The 546 visible blockstates plus 30 non-cherry legacy BOP
+                // compatibility blockstates whose names contain biomesoplenty.
+                'assets/ironagefurniture/blockstates': 674,
+                'assets/ironagefurniture/models/item': 1890,
+                'assets/ironagefurniture/items': 1890,
+                'data/ironagefurniture/recipe': 1890,
+                'data/ironagefurniture/advancement/recipes/chairs': 546
+        ]
+        expected.each { relative, count ->
+            File directory = file("src/main/resources/${relative}")
+            Set<File> files = fileTree(directory) { include '*.json' }.files.findAll { it.name.contains('biomesoplenty') }
+            if (files.size() != count) throw new GradleException("${relative} contains ${files.size()} BOP files; expected ${count}")
+        }
+        ['en_en.json', 'en_gb.json', 'en_us.json'].each { locale ->
+            Map language = new JsonSlurper().parse(file("src/main/resources/assets/ironagefurniture/lang/${locale}")) as Map
+            // Keep the original bench names, all new colour variants and four tab labels.
+            if (language.size() != 3364) throw new GradleException("${locale} contains ${language.size()} translations; expected 3364")
+        }
+        List<String> woods = ['dead', 'fir', 'hellbark', 'jacaranda', 'magic', 'mahogany', 'maple',
+                'origin_oak', 'palm', 'pine', 'redwood', 'umbran', 'willow', 'empyreal']
+        List<String> colours = ['red', 'orange', 'magenta', 'light_blue', 'yellow', 'lime', 'pink', 'gray',
+                'light_gray', 'cyan', 'purple', 'blue', 'brown', 'green', 'white', 'black']
+        List<String> forms = ['chair_wood_ironage_wingback_', 'chair_wood_ironage_throne_',
+                'bed_wood_foot_', 'bed_wood_foot_left_', 'bed_canopy_foot_lower_', 'bed_canopy_foot_left_lower_']
+        woods.each { wood -> forms.each { form -> colours.each { colour ->
+            String id = "${form}biomesoplenty_${wood}" + (colour == 'red' ? '' : "_${colour}")
+            boolean namedRed = form.startsWith('chair_') || form == 'bed_canopy_foot_lower_'
+            String recipeId = "${form}biomesoplenty_${wood}" + (colour == 'red' && !namedRed ? '' : "_${colour}")
+            ['assets/ironagefurniture/items', 'assets/ironagefurniture/models/item'].each { directory ->
+                if (!file("src/main/resources/${directory}/${id}.json").isFile())
+                    throw new GradleException("Missing Phase 4 ${directory}/${id}.json")
+            }
+            ['data/ironagefurniture/recipe', 'data/ironagefurniture/advancement/recipes/phase_four'].each { directory ->
+                if (!file("src/main/resources/${directory}/${recipeId}.json").isFile())
+                    throw new GradleException("Missing Phase 4 ${directory}/${recipeId}.json")
+            }
+            Map recipe = new JsonSlurper().parse(file("src/main/resources/data/ironagefurniture/recipe/${recipeId}.json")) as Map
+            if (recipe.result?.id != "ironagefurniture:${id}" || recipe.group != "ironagefurniture:${recipeId}")
+                throw new GradleException("Incorrect recipe output or recipe-book group for ${id}")
+        } } }
+    }
+}
+
+tasks.register('verifyResourceJson') {
+    group = 'verification'
+    doLast {
+        fileTree('src/main/resources') { include '**/*.json'; include '**/*.mcmeta' }.each { candidate ->
+            try { new JsonSlurper().parse(candidate) }
+            catch (Exception failure) { throw new GradleException("Invalid JSON ${project.relativePath(candidate)}", failure) }
+        }
+    }
+}
+
+tasks.register('verifyBlockstateModelReferences') {
+    group = 'verification'
+    dependsOn tasks.named('verifyPinnedCoreArtifact')
+    inputs.dir layout.projectDirectory.dir('src/main/resources/assets/ironagefurniture/blockstates')
+    inputs.dir layout.projectDirectory.dir('src/main/resources/assets/ironagefurniture/models/block')
+    inputs.files configurations.ironAgeFurnitureVerification
+    doLast {
+        Set<String> availableModels = fileTree('src/main/resources/assets/ironagefurniture/models/block') {
+            include '*.json'
+        }.files.collect { model ->
+            "ironagefurniture:block/${model.name.replaceFirst(/\.json$/, '')}".toString()
+        } as Set<String>
+        new ZipFile(configurations.ironAgeFurnitureVerification.singleFile).withCloseable { coreJar ->
+            coreJar.entries().findAll {
+                it.name.startsWith('assets/ironagefurniture/models/block/') && it.name.endsWith('.json')
+            }.each { entry ->
+                String model = entry.name
+                        .replaceFirst('assets/ironagefurniture/models/block/', 'ironagefurniture:block/')
+                        .replaceFirst(/\.json$/, '')
+                availableModels.add(model.toString())
+            }
+        }
+
+        Set<String> missing = new TreeSet<>()
+        Closure collectModels
+        collectModels = { value, File source ->
+            if (value instanceof Map) {
+                if (value.model instanceof String
+                        && value.model.startsWith('ironagefurniture:block/')
+                        && !availableModels.contains(value.model)) {
+                    missing.add("${project.relativePath(source)} -> ${value.model}")
+                }
+                value.values().each { nested -> collectModels(nested, source) }
+            } else if (value instanceof Collection) {
+                value.each { nested -> collectModels(nested, source) }
+            }
+        }
+        fileTree('src/main/resources/assets/ironagefurniture/blockstates') { include '*.json' }.each { blockstate ->
+            collectModels(new JsonSlurper().parse(blockstate), blockstate)
+        }
+        if (!missing.isEmpty()) {
+            throw new GradleException("Blockstates reference missing models: ${missing.take(20)}")
+        }
+    }
+}
+
+tasks.register('verifyIntegrationTextures') {
+    group = 'verification'
+    doLast {
+        File bopJar = providers.gradleProperty('biomesOPlentyJar').map { file(it) }
+                .orElse(file('../dependency-inspection/BiomesOPlenty-neoforge-26.3-26.3.0.0.15.jar')).get()
+        if (!bopJar.isFile()) {
+            logger.lifecycle("Skipping external BOP jar path audit; provide -PbiomesOPlentyJar=<published jar>. Static resource references remain checked.")
+            return
+        }
+        Map manifest = new JsonSlurper().parse(file('gradle/verification-dependencies.json')) as Map
+        String actualHash = sha256Of(bopJar)
+        Map pinnedJar = ((List<Map>) manifest.mods).find { mod ->
+            mod.modId == 'biomesoplenty' && mod.file == bopJar.name && mod.sha256 == actualHash
+        }
+        if (pinnedJar == null) {
+            throw new GradleException('Biomes O Plenty test jar is not pinned or its SHA-256 does not match')
+        }
+        Set<String> entries
+        new ZipFile(bopJar).withCloseable { zip -> entries = zip.entries().collect { it.name } as Set<String> }
+        Set<String> missing = new TreeSet<>()
+        fileTree('src/main/resources/assets/ironagefurniture/models') { include '**/*.json' }.each { model ->
+            Map json = new JsonSlurper().parse(model) as Map
+            (json.textures ?: [:]).values().findAll { it instanceof String && it.startsWith('biomesoplenty:block/') }.each { texture ->
+                String path = "assets/${texture.replace(':', '/textures/')}.png"
+                if (!entries.contains(path)) missing.add(path)
+            }
+        }
+        if (!missing.isEmpty()) throw new GradleException("BOP textures are missing from the published jar: ${missing}")
+    }
+}
+
+tasks.register('verifyNamespaceMigration') {
+    group = 'verification'
+    doLast {
+        fileTree('src/main/java') { include '**/*.java' }.each { source ->
+            String text = source.getText('UTF-8')
+            if (text.contains('package zone.moddev.mc.ironagefurniture')) {
+                throw new GradleException("Add-on implementation escaped its package: ${source}")
+            }
+        }
+        if (!file('src/main/resources/assets/ironagefurniture').isDirectory()
+                || !file('src/main/resources/data/ironagefurniture').isDirectory()) {
+            throw new GradleException('Historical IronAgeFurniture resource identity is missing')
+        }
+    }
+}
+
+tasks.register('verifyLegacyMigrationContract') {
+    group = 'verification'
+    doLast {
+        String registry = file('src/main/java/zone/moddev/mc/iafbopaddon/compat/LegacyPaddedBenchRegistry.java').getText('UTF-8')
+        String mappings = file('src/main/java/zone/moddev/mc/iafbopaddon/compat/LegacyPaddedBenchMappings.java').getText('UTF-8')
+        String migration = file('src/main/java/zone/moddev/mc/iafbopaddon/compat/LegacyPaddedBenchMigration.java').getText('UTF-8')
+        Map catalog = new JsonSlurper().parse(file('gradle/furniture-catalog.json')) as Map
+        [
+                'padded_bench_colour', 'registerIntermediateCherryItemAlias',
+                'LegacyPaddedBenchBlockEntity::new'
+        ].each { if (!registry.contains(it)) throw new GradleException("Legacy registry contract is missing ${it}") }
+        ['"ebony", new TargetWood("hellbark", true)',
+         '"ethereal", new TargetWood("warped", false)',
+         '"eucalyptus", new TargetWood("origin_oak", true)',
+         '"mangrove", new TargetWood("pale_oak", false)',
+         '"sacred_oak", new TargetWood("origin_oak", true)'].each {
+            if (!mappings.contains(it)) throw new GradleException("Legacy visual fallback is missing ${it}")
+        }
+        ['ChunkDataEvent.Load', 'PlayerLoggedInEvent', 'ItemEntity', 'DataComponents.CONTAINER',
+         'DataComponents.BUNDLE_CONTENTS', 'transmuteCopy', 'removeColor'].each {
+            if (!migration.contains(it)) throw new GradleException("Migration surface is missing ${it}")
+        }
+        Map<String, String> expectedFallbacks = [
+                cherry: 'cherry', ebony: 'biomesoplenty_hellbark', ethereal: 'warped',
+                eucalyptus: 'biomesoplenty_origin_oak', fir: 'biomesoplenty_fir',
+                hellbark: 'biomesoplenty_hellbark', jacaranda: 'biomesoplenty_jacaranda',
+                magic: 'biomesoplenty_magic', mahogany: 'biomesoplenty_mahogany',
+                mangrove: 'pale_oak', palm: 'biomesoplenty_palm', pine: 'biomesoplenty_pine',
+                redwood: 'biomesoplenty_redwood', sacred_oak: 'biomesoplenty_origin_oak',
+                umbran: 'biomesoplenty_umbran', willow: 'biomesoplenty_willow'
+        ]
+        Map<String, String> catalogFallbacks = (catalog.legacyCompatibility as List).collectEntries {
+            [(it.legacy.toString()): it.target.toString()]
+        }
+        if (catalogFallbacks != expectedFallbacks) {
+            throw new GradleException("Legacy compatibility resources do not match migration fallbacks: ${catalogFallbacks}")
+        }
+    }
+}
+
+tasks.register('verifyLegacyMigrationFixtures') {
+    group = 'verification'
+    doLast {
+        Map<String, String> expected = [
+                '1.10/iaf-1.10-red-only.nbt': '00599c1f39fdc1261c75ca34a63b9d0f8f368f34581d4a0306553c75b5fcd91c',
+                '1.10/iaf-1.10-multicolour.nbt': '26e2577c1a6f5d348f9de29700dcff4395e1592946c89d7b83df6a44e40f6726',
+                '1.12/iaf-1.12-red-only.nbt': '7468a86ef93d3e4651c9d1045631760f3554cbfe46b1f86d754bec30c61dd14a',
+                '1.12/iaf-1.12-multicolour.nbt': '2b55b823fd0d2143cdf4892e614f61a3fbfd40f92648003e851379db4dbccc40'
+        ]
+        expected.each { relative, hash ->
+            File fixture = file("src/test/resources/fixtures/${relative}")
+            if (!fixture.isFile() || sha256Of(fixture) != hash) {
+                throw new GradleException("Legacy fixture ${relative} is missing or does not match its source branch")
+            }
+        }
+    }
+}
+
+tasks.register('verifyExpandedMetadata') {
+    group = 'verification'
+    dependsOn tasks.named('processResources')
+    doLast {
+        String metadata = layout.buildDirectory.file('resources/main/META-INF/neoforge.mods.toml').get().asFile.getText('UTF-8')
+        [
+                'modId="iafbopaddon"',
+                'modId="ironagefurniture"',
+                'versionRange="[0.4.0.2603002]"',
+                'modId="biomesoplenty"',
+                'versionRange="[26.3.0.0.15,26.4)"',
+                'modId="glitchcore"',
+                'versionRange="[26.3.0.0.5,26.4)"',
+                'modId="terrablender"',
+                'versionRange="[26.3.0.0.9,26.4)"'
+        ].each { if (!metadata.contains(it)) throw new GradleException("Expanded metadata is missing ${it}") }
+        if (metadata.contains('${')) throw new GradleException('Expanded metadata contains unresolved tokens')
+    }
+}
+
+tasks.register('verifyRepositoryHygiene') {
+    group = 'verification'
+    doLast {
+        List<String> forbidden = ['.gradle/', 'build/', 'bin/', 'run/', '.idea/', '.eclipse/', '*.launch']
+        List<String> tracked = providers.exec {
+            commandLine 'git', 'ls-files'
+        }.standardOutput.asText.get().readLines()
+        List<String> bad = tracked.findAll { path ->
+            path.startsWith('.gradle/') || path.startsWith('build/') || path.startsWith('bin/')
+                    || path.startsWith('run/') || path.startsWith('.idea/') || path.startsWith('.eclipse/')
+                    || path.endsWith('.launch')
+        }
+        if (!bad.isEmpty()) throw new GradleException("Generated files are tracked: ${bad}")
+        tracked.each { path ->
+            File candidate = file(path)
+            if (candidate.isFile() && candidate.length() < 2_000_000L) {
+                String text
+                try { text = candidate.getText('UTF-8') } catch (Exception ignored) { return }
+                if (text.contains('D:\\IronAgeFurniture') || text.contains('C:\\Users\\johnb')) {
+                    throw new GradleException("Machine-specific path in ${project.relativePath(candidate)}")
+                }
+            }
+        }
+    }
+}
+
+tasks.register('verifyWorkflowActionPins') {
+    group = 'verification'
+    doLast {
+        File workflows = file('.github/workflows')
+        if (!workflows.isDirectory()) throw new GradleException('Missing GitHub workflows')
+        fileTree(workflows) { include '*.yml'; include '*.yaml' }.each { workflow ->
+            workflow.readLines('UTF-8').eachWithIndex { line, index ->
+                def match = line =~ /^\s*uses:\s*([^#\s]+).*/
+                if (match.matches()) {
+                    String action = match.group(1)
+                    if (!action.startsWith('./') && !(action ==~ /[^@]+@[0-9a-f]{40}/)) {
+                        throw new GradleException("Unpinned action ${action} at ${workflow}:${index + 1}")
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.register('verifyReleaseTagWorkflow') {
+    group = 'verification'
+    doLast {
+        String workflow = file('.github/workflows/publish-release.yml').getText('UTF-8')
+        ['master-26.3', 'master-26.3-neo', '2603001', '2603002',
+         'curseforge_project_id', '1705705', 'confirm_live_publication',
+         'ironagefurniture,biomes-o-plenty', 'project_slug=ironagefurniture'].each { required ->
+            if (!workflow.contains(required)) {
+                throw new GradleException("Release dispatcher is missing ${required}")
+            }
+        }
+    }
+}
+
+tasks.register('verifyReleaseConfiguration') {
+    group = 'verification'
+    doLast {
+        if (project.curseforge_project_id.toString() != '1705705') {
+            throw new GradleException('Unexpected CurseForge project ID')
+        }
+        ['README.md', 'CHANGELOG.md', 'docs/VERSIONS.md'].each { path ->
+            if (!file(path).getText('UTF-8').contains(project.version.toString())) {
+                throw new GradleException("${path} does not document ${project.version}")
+            }
+        }
+    }
+}
+
+tasks.register('verifyShieldChairItems') {
+    group = 'verification'
+    description = 'Keeps empty BOP shield-chair items on their bare wooden frame models.'
+    doLast {
+        // The add-on keeps its historical furniture/resource namespace for old saves.
+        Set<File> chairs = fileTree('src/main/resources/assets/ironagefurniture/items') { include 'chair_wood_ironage_shield_*.json' }.files
+        if (chairs.size() != 14) throw new GradleException('Expected all fourteen BOP shield-chair item definitions')
+        chairs.each { source ->
+            String id = source.name[0..-6]
+            Map model = new JsonSlurper().parse(source).model
+            if (model.type != 'minecraft:condition' || model.property != 'minecraft:component'
+                    || model.predicate != 'minecraft:container' || model.value?.items?.size != 0
+                    || model.on_true?.model != "ironagefurniture:block/${id}_frame"
+                    || model.on_false?.model != "ironagefurniture:item/${id}")
+                throw new GradleException("Empty shield storage does not select the BOP frame model: ${id}")
+        }
+    }
+}
+tasks.named('check') { dependsOn 'verifyShieldChairItems' }
+
+tasks.register('validateCurseForgeProjectId') {
+    group = 'publishing'
+    doLast {
+        if (!(project.curseforge_project_id.toString() ==~ /\d+/)) {
+            throw new GradleException('CurseForge publication is disabled until curseforge_project_id is assigned')
+        }
+    }
+}

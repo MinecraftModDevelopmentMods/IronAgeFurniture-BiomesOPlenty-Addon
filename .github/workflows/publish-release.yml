@@ -242,7 +242,8 @@ jobs:
             echo "Unexpected add-on mod ID" >&2
             exit 1
           fi
-          if [[ "$curseforge_required_dependencies" != "iron-age-furniture,biomes-o-plenty" ]]; then
+          if [[ "$curseforge_required_dependencies" != "ironagefurniture,biomes-o-plenty" &&
+                "$curseforge_required_dependencies" != "iron-age-furniture,biomes-o-plenty" ]]; then
             echo "Unexpected CurseForge dependency contract $curseforge_required_dependencies" >&2
             exit 1
           fi
@@ -255,6 +256,8 @@ jobs:
           if [[ -n "$curseforge_required_dependencies" ]]; then
             IFS=',' read -ra required_projects <<<"$curseforge_required_dependencies"
             for project_slug in "${required_projects[@]}"; do
+              # Older branches used the display-name slug rather than the project's real URL.
+              if [[ "$project_slug" == "iron-age-furniture" ]]; then project_slug=ironagefurniture; fi
               if [[ ! "$project_slug" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
                 echo "Invalid CurseForge required project slug $project_slug" >&2
                 exit 1
@@ -730,6 +733,7 @@ jobs:
         uses: Kira-NT/mc-publish@52307b03863581dec6b652b83e597aec02ebb075 # v3.3.1
         with:
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          curseforge-retry-attempts: 1
           curseforge-id: ${{ needs.preflight.outputs.curseforge_project_id }}
           curseforge-dependencies: ${{ needs.preflight.outputs.curseforge_dependencies }}
           name: Iron Age Furniture Biomes O Plenty Add-on ${{ needs.preflight.outputs.release_version }} for Minecraft ${{ needs.preflight.outputs.minecraft_version }} (${{ needs.preflight.outputs.loader_display }})

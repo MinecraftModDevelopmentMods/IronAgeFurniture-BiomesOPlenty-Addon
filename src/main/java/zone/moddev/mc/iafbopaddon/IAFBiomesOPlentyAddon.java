@@ -23,16 +23,26 @@ public final class IAFBiomesOPlentyAddon {
 
     public IAFBiomesOPlentyAddon(IEventBus modBus, ModContainer container) {
         ModBOPBlocks.REGISTER.register(modBus);
+        zone.moddev.mc.iafbopaddon.init.PhaseFourBopFurniture.REGISTER.register(modBus);
         ModBOPBlocks.ITEMS.register(modBus);
         LegacyPaddedBenchRegistry.register(modBus);
         modBus.addListener(this::populateCreativeTab);
+        modBus.addListener(this::extendShieldChairs);
         LegacyPaddedBenchMigration.register();
         LOGGER.info("Iron Age Furniture Biomes O' Plenty Add-on is loading");
     }
 
     private void populateCreativeTab(BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey().equals(ModCreativeTab.FURNITURE.getKey())) {
-            ModBOPBlocks.ITEMS.getEntries().forEach(item -> event.accept(item.get()));
-        }
+        ModBOPBlocks.ITEMS.getEntries().forEach(holder -> {
+            var item = holder.get();
+            if (ModCreativeTab.visible(item) && event.getTabKey().equals(ModCreativeTab.keyFor(item))) event.accept(item);
+        });
+    }
+
+    private void extendShieldChairs(net.neoforged.neoforge.event.BlockEntityTypeAddBlocksEvent event) {
+        event.modify(zone.moddev.mc.ironagefurniture.init.PhaseFourBlockEntities.SHIELD_CHAIR.get(),
+                ModBOPBlocks.REGISTER.getEntries().stream().map(net.neoforged.neoforge.registries.DeferredHolder::get)
+                        .filter(block -> block instanceof zone.moddev.mc.ironagefurniture.api.blocks.furniture.ShieldChair)
+                        .toArray(net.minecraft.world.level.block.Block[]::new));
     }
 }

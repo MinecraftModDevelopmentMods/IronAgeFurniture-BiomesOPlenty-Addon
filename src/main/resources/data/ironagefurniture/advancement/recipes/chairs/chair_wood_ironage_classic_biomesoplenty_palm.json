@@ -29,5 +29,11 @@
             "ironagefurniture:chair_wood_ironage_classic_biomesoplenty_palm"
         ]
     },
-    "sends_telemetry_event": false
+    "sends_telemetry_event": false,
+    "neoforge:conditions": [
+        {
+            "type": "ironagefurniture:feature_enabled",
+            "feature": "classicChairs"
+        }
+    ]
 }

@@ -40,3 +40,18 @@ ${mod_description}
     versionRange="${biomesoplenty_version_range}"
     ordering="AFTER"
     side="BOTH"
+
+# These versions are needed for the supported NeoForge 26.3 loader range.
+[[dependencies.iafbopaddon]]
+    modId="glitchcore"
+    type="required"
+    versionRange="${glitchcore_version_range}"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.iafbopaddon]]
+    modId="terrablender"
+    type="required"
+    versionRange="${terrablender_version_range}"
+    ordering="AFTER"
+    side="BOTH"

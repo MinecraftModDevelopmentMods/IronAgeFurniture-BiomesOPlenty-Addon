@@ -56,13 +56,16 @@ def isVisibleItemDefinitionId = { String itemId ->
     ].contains(itemId)
 }
 def targetFurnitureJavaSource = { String source, def catalog ->
-    source
+    source.replaceAll(/new Chair(?:Nether)?\(1, 10, SoundType.WOOD, ("chair_wood_ironage_shield_[^"]+")\)/,
+            'new zone.moddev.mc.ironagefurniture.api.blocks.furniture.ShieldChair(1, 10, SoundType.WOOD, $1)')
 }
 def renderTargetFurnitureData = { String relative, String rendered, def catalog ->
     if (!(catalog.dataSchema in ['forge50', 'forge52', 'forge61', 'neoforge']) || !relative.endsWith('.json')) {
         return rendered
     }
     if (relative.contains('/advancements/') || relative.contains('/advancement/')) {
+        String feature = relative.contains('_shield_') ? 'shieldChairs' : relative.contains('_stool_') ? 'stools'
+                : relative.contains('_bench_') ? 'benches' : 'classicChairs'
         Map wrapper = new JsonSlurper().parseText(rendered) as Map
         if (wrapper.advancements instanceof List && wrapper.advancements.size() == 1
                 && wrapper.advancements[0].conditions instanceof List
@@ -83,6 +86,7 @@ def renderTargetFurnitureData = { String relative, String rendered, def catalog 
                 wrapper = [advancements: [advancement]]
             }
         }
+        wrapper['neoforge:conditions'] = (wrapper['neoforge:conditions'] ?: []) + [[type: 'ironagefurniture:feature_enabled', feature: feature]]
         return JsonOutput.prettyPrint(JsonOutput.toJson(wrapper)) + '\n'
     }
     if (relative.contains('/recipes/') || relative.contains('/recipe/')) {
@@ -113,6 +117,10 @@ def renderTargetFurnitureData = { String relative, String rendered, def catalog 
                 recipe.ingredients = recipe.ingredients.collect { nativeIngredient(it) }
             }
         }
+        String feature = relative.contains('_shield_') ? 'shieldChairs' : relative.contains('_stool_') ? 'stools'
+                : relative.contains('_bench_') ? 'benches' : 'classicChairs'
+        recipe.group = recipe.result.id
+        recipe['neoforge:conditions'] = [[type: 'ironagefurniture:feature_enabled', feature: feature]]
         return JsonOutput.prettyPrint(JsonOutput.toJson(recipe)) + '\n'
     }
     rendered
@@ -285,6 +293,7 @@ def renderFurnitureCatalog = { File outputRoot ->
             }
         }
     }
+    generated.addAll(renderPhaseFourCatalog(outputRoot, language, catalog))
     String languageJson = JsonOutput.prettyPrint(JsonOutput.toJson(language)) + '\n'
     ['en_en.json', 'en_gb.json', 'en_us.json'].each { locale ->
         writeFurnitureFile(outputRoot,
@@ -298,8 +307,15 @@ def renderFurnitureCatalog = { File outputRoot ->
         fileTree('src/main/resources/assets/ironagefurniture/models/item') { include '*.json' }
                 .files.each { model -> visibleItems.add(model.name.replaceFirst(/\.json$/, '')) }
         visibleItems.findAll(isVisibleItemDefinitionId).each { itemId ->
+            Map itemModel = [type: 'minecraft:model', model: "ironagefurniture:item/${itemId}"]
+            if (itemId.startsWith('chair_wood_ironage_shield_')) {
+                // Explicitly empty shield storage shows the wooden frame, including in inventories.
+                itemModel = [type: 'minecraft:condition', property: 'minecraft:component', predicate: 'minecraft:container',
+                        value: [items: [size: 0]],
+                        on_true: [type: 'minecraft:model', model: "ironagefurniture:block/${itemId}_frame"], on_false: itemModel]
+            }
             String definition = JsonOutput.prettyPrint(JsonOutput.toJson([
-                    model: [type: 'minecraft:model', model: "ironagefurniture:item/${itemId}"]
+                    model: itemModel
             ])) + '\n'
             writeFurnitureFile(outputRoot,
                     "src/main/resources/assets/ironagefurniture/items/${itemId}.json",
@@ -314,6 +330,9 @@ def isManagedFurnitureResource = { File file ->
     if (!file.isFile() || file.name == null
             || !(file.name.endsWith('.json') || file.name == 'pack.mcmeta')) return false
     String relative = normalizeFurniturePath(project.projectDir.toPath().relativize(file.toPath()).toString())
+    if (relative.startsWith('src/main/resources/data/ironagefurniture/advancement/recipes/phase_four/')) return true
+    if (file.name.startsWith('bed_') || file.name.startsWith('chair_wingback_') || file.name.startsWith('chair_throne_')
+            || file.name.startsWith('template_bed_') || file.name.startsWith('template_chair_wingback') || file.name.startsWith('template_chair_throne')) return true
     if (relative ==~ /src\/main\/resources\/resourcepacks\/ironagefurniture_[^\/]+\/pack\.mcmeta/) return true
     if (relative.startsWith('src/main/resources/assets/ironagefurniture/items/')) return true
     if (!file.name.startsWith('chair_wood_ironage_')) return false

@@ -1,0 +1,211 @@
+import java.security.MessageDigest
+import org.gradle.jvm.toolchain.JvmVendorSpec
+
+// Minecraft and Java versions, dependency checks, and local run profiles.
+group = project.mod_group
+version = project.mod_version
+base.archivesName = project.mod_archive_name
+
+def versionParts = project.mod_version.toString().tokenize('.')
+if (versionParts.size() != 4 || !versionParts.every { it ==~ /\d+/ }) {
+    throw new GradleException("mod_version must use Major.Minor.Bug.Target numeric form: ${project.mod_version}")
+}
+def minecraftParts = project.minecraft_version.toString().tokenize('.')
+def patch = minecraftParts.size() == 3 ? minecraftParts[2] : '0'
+def expectedTarget = "${minecraftParts[0]}${minecraftParts[1].padLeft(2, '0')}${patch.padLeft(2, '0')}${project.loader_code}"
+if (versionParts[3] != expectedTarget) {
+    throw new GradleException("mod_version target ${versionParts[3]} does not match ${project.minecraft_version} ${project.loader_name} target ${expectedTarget}")
+}
+if (GradleVersion.current() != GradleVersion.version('9.2.1')) {
+    throw new GradleException("This build requires Gradle 9.2.1, found ${GradleVersion.current()}")
+}
+if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_25)) {
+    throw new GradleException("Gradle requires Java 25 or newer, found ${System.getProperty('java.version')}")
+}
+
+ext.sha256Of = { File inputFile ->
+    MessageDigest digest = MessageDigest.getInstance('SHA-256')
+    inputFile.withInputStream { input ->
+        byte[] buffer = new byte[8192]
+        for (int read = input.read(buffer); read >= 0; read = input.read(buffer)) {
+            if (read > 0) digest.update(buffer, 0, read)
+        }
+    }
+    digest.digest().encodeHex().toString().toLowerCase(Locale.ROOT)
+}
+
+ext.java25Compiler = javaToolchains.compilerFor {
+    languageVersion = JavaLanguageVersion.of(25)
+    vendor = JvmVendorSpec.ADOPTIUM
+}
+ext.java25Launcher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(25)
+    vendor = JvmVendorSpec.ADOPTIUM
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+        vendor = JvmVendorSpec.ADOPTIUM
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    javaCompiler = java25Compiler
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll(['-Xlint:deprecation', '-Xmaxerrs', '1000'])
+}
+tasks.named('compileTestJava', JavaCompile) { options.compilerArgs.add('-proc:none') }
+tasks.withType(Javadoc).configureEach {
+    failOnError = false
+    options.encoding = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
+    options.addBooleanOption('notimestamp', true)
+}
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    includeEmptyDirs = false
+}
+
+tasks.matching { it.name.startsWith('cacheVersionExecutable') }.configureEach {
+    onlyIf {
+        Set<File> cached = outputs.files.files
+        !gradle.startParameter.offline || cached.isEmpty() || !cached.every { it.exists() }
+    }
+}
+
+tasks.register('verifyBuildEnvironment') {
+    group = 'verification'
+    inputs.file layout.projectDirectory.file('gradle/gradle-daemon-jvm.properties')
+    doLast {
+        File daemonCriteriaFile = file('gradle/gradle-daemon-jvm.properties')
+        Properties daemonCriteria = new Properties()
+        daemonCriteriaFile.withInputStream { daemonCriteria.load(it) }
+        if (daemonCriteria.getProperty('toolchainVersion') != project.gradle_java_version.toString()
+                || daemonCriteria.getProperty('toolchainVendor') != 'ADOPTIUM'
+                || daemonCriteria.keySet().any { it.toString().startsWith('toolchainUrl.') }) {
+            throw new GradleException('Gradle daemon criteria must select a local Adoptium Java 25 without download URLs')
+        }
+        def metadata = java25Compiler.get().metadata
+        String actual = metadata.javaRuntimeVersion.toString().replaceFirst(/-LTS$/, '')
+        if (actual != project.java_toolchain_version.toString()
+                || !metadata.vendor.toString().toLowerCase(Locale.ROOT).contains('temurin')) {
+            throw new GradleException("Java compiler toolchain must be ${project.java_toolchain_version}; found ${metadata.vendor} ${metadata.javaRuntimeVersion}")
+        }
+    }
+}
+tasks.withType(JavaCompile).configureEach { dependsOn tasks.named('verifyBuildEnvironment') }
+
+ext.eclipseWorkspaceProjectName = 'IronAgeFurnitureBiomesOPlentyAddon'
+eclipse {
+    project {
+        name = eclipseWorkspaceProjectName
+        buildCommand 'org.eclipse.buildship.core.gradleprojectbuilder'
+        natures 'org.eclipse.buildship.core.gradleprojectnature'
+    }
+    classpath {
+        downloadSources = true
+        downloadJavadoc = true
+        file.whenMerged { classpath ->
+            classpath.entries.removeAll { entry ->
+                entry instanceof org.gradle.plugins.ide.eclipse.model.SourceFolder
+                        && entry.path == 'src/main/resources'
+            }
+            Set<String> libraryPaths = new LinkedHashSet<>()
+            classpath.entries.removeAll { entry ->
+                if (!(entry instanceof org.gradle.plugins.ide.eclipse.model.Library)) return false
+                !libraryPaths.add(entry.path.replace('\\', '/').toLowerCase(Locale.ROOT))
+            }
+            if (!classpath.entries.any { it.path == 'build/resources/main' }) {
+                classpath.entries.add(new org.gradle.plugins.ide.eclipse.model.SourceFolder('build/resources/main', 'bin/main'))
+            }
+        }
+    }
+}
+idea.module {
+    downloadSources = true
+    downloadJavadoc = true
+}
+
+runs {
+    configureEach {
+        workingDirectory project.layout.projectDirectory.dir(providers.gradleProperty('runDirectory').getOrElse('run'))
+        systemProperty 'forge.logging.markers', 'REGISTRIES'
+        systemProperty 'forge.logging.console.level', 'debug'
+        modSource project.sourceSets.main
+    }
+    client
+    server { argument '--nogui' }
+}
+tasks.withType(JavaExec).configureEach {
+    if (name == 'runServer') standardInput = System.in
+}
+
+repositories {
+    mavenCentral()
+    ivy {
+        name = 'IronAgeFurnitureGitHubReleases'
+        url = uri('https://github.com/MinecraftModDevelopmentMods/IronAgeFurniture/releases/download')
+        patternLayout {
+            artifact '[revision]/[artifact]-[revision](-[classifier]).[ext]'
+        }
+        metadataSources { artifact() }
+        content { includeModule 'zone.moddev.mc', 'iron-age-furniture' }
+    }
+}
+
+configurations {
+    ironAgeFurnitureVerification {
+        canBeConsumed = false
+        canBeResolved = true
+        transitive = false
+    }
+}
+
+dependencies {
+    implementation "net.neoforged:neoforge:${project.neo_version}"
+    if (providers.gradleProperty('localCoreJar').isPresent()) {
+        File stagedCore = file(providers.gradleProperty('localCoreJar').get())
+        String expectedHash = providers.gradleProperty('localCoreSha256').getOrElse('')
+        if (!(expectedHash ==~ /(?i)[0-9a-f]{64}/) || !stagedCore.isFile()
+                || stagedCore.name != "iron-age-furniture-${project.ironagefurniture_version}.jar"
+                || stagedCore.toPath().toAbsolutePath().normalize().startsWith(projectDir.toPath().toAbsolutePath().normalize())
+                || sha256Of(stagedCore) != expectedHash.toLowerCase(Locale.ROOT)) {
+            throw new GradleException('Local core testing requires an external, checksum-verified artifact with the exact pinned version')
+        }
+        implementation files(stagedCore)
+        ironAgeFurnitureVerification files(stagedCore)
+    } else {
+        implementation("zone.moddev.mc:iron-age-furniture:${project.ironagefurniture_version}") { transitive = false }
+        ironAgeFurnitureVerification("zone.moddev.mc:iron-age-furniture:${project.ironagefurniture_version}") { transitive = false }
+    }
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    workingDir = project.projectDir
+}
+
+tasks.register('verifyPinnedCoreArtifact') {
+    group = 'verification'
+    inputs.files configurations.ironAgeFurnitureVerification
+    doLast {
+        Set<File> files = configurations.ironAgeFurnitureVerification.files
+        if (files.size() != 1) throw new GradleException("Expected one released IronAgeFurniture jar, found ${files}")
+        String actual = sha256Of(files.first())
+        String expected = providers.gradleProperty('localCoreJar').isPresent()
+                ? providers.gradleProperty('localCoreSha256').get() : project.ironagefurniture_sha256.toString()
+        if (actual != expected.toLowerCase(Locale.ROOT)) {
+            throw new GradleException("IronAgeFurniture ${project.ironagefurniture_version} SHA-256 mismatch: ${actual}")
+        }
+    }
+}
+tasks.named('compileJava') { dependsOn tasks.named('verifyPinnedCoreArtifact') }
