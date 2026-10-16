@@ -730,6 +730,7 @@ jobs:
         uses: Kira-NT/mc-publish@52307b03863581dec6b652b83e597aec02ebb075 # v3.3.1
         with:
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          curseforge-retry-attempts: 1
           curseforge-id: ${{ needs.preflight.outputs.curseforge_project_id }}
           curseforge-dependencies: ${{ needs.preflight.outputs.curseforge_dependencies }}
           name: Iron Age Furniture Biomes O Plenty Add-on ${{ needs.preflight.outputs.release_version }} for Minecraft ${{ needs.preflight.outputs.minecraft_version }} (${{ needs.preflight.outputs.loader_display }})

@@ -50,6 +50,6 @@ If Minecraft refuses to open the world, return to the untouched backup and use t
 
 ## Phase 4 verification
 
-The current local candidate has passed first and second loads of the supported 1.10/1.12 furniture fixtures and existing 26.3 BOP saves. The tested fixtures load directly through the compatibility bridge; no intermediate Minecraft save was needed for those particular cases. A hash-checked Sylvester furniture extraction also passes both loads, without altering its source world.
+Version `0.4.0.2603002` has passed first and second loads of the supported 1.10/1.12 furniture fixtures and existing 26.3 BOP saves. The tested fixtures load directly through the compatibility bridge; no intermediate Minecraft save was needed for those particular cases. A hash-checked Sylvester furniture extraction also passes both loads, without altering its source world.
 
-This is furniture compatibility testing, not a promise that the rest of an old modpack can be converted. Missing BYG or Immersive Engineering furniture and unrelated old biome terrain are outside this add-on's coverage. The local candidates pass the final build and repeat-build gates; publication remains a separate step.
+This is furniture compatibility testing, not a promise that the rest of an old modpack can be converted. Missing BYG or Immersive Engineering furniture and unrelated old biome terrain are outside this add-on's coverage. Keep the original installation and backup until you have checked your own copied world.

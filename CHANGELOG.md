@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.4.0.2603002 — local candidate
+## 0.4.0.2603002
 
+- Shows the bare wooden frame in inventories when a shield chair has no shield attached.
 - Adds wingbacks, thrones, wooden beds and canopy beds, including doubles, in all sixteen colours for the fourteen supported wood families.
 - Adds shield storage using the core's shield-chair behaviour and renderers.
 - Organises furniture in the core's Chairs, Benches and Beds tabs, with translated names and English fallbacks.
