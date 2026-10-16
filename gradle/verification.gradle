@@ -303,7 +303,7 @@ tasks.register('verifyReleaseTagWorkflow') {
         String workflow = file('.github/workflows/publish-release.yml').getText('UTF-8')
         ['master-26.3', 'master-26.3-neo', '2603001', '2603002',
          'curseforge_project_id', '1705705', 'confirm_live_publication',
-         'iron-age-furniture,biomes-o-plenty'].each { required ->
+         'ironagefurniture,biomes-o-plenty', 'project_slug=ironagefurniture'].each { required ->
             if (!workflow.contains(required)) {
                 throw new GradleException("Release dispatcher is missing ${required}")
             }
