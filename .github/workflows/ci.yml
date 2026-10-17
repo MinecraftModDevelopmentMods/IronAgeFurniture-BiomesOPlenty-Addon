@@ -58,6 +58,22 @@ jobs:
           java-version: '25.0.3+9.0.LTS'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+      - name: Download the stable and newer BOP compatibility fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bop-compatibility"
+          cd "$RUNNER_TEMP/bop-compatibility"
+          curl --fail --location --retry 3 \
+            'https://edge.forgecdn.net/files/8973/616/BiomesOPlenty-neoforge-26.3-26.3.0.0.7.jar' \
+            --output BiomesOPlenty-neoforge-26.3-26.3.0.0.7.jar
+          curl --fail --location --retry 3 \
+            'https://edge.forgecdn.net/files/9168/503/BiomesOPlenty-neoforge-26.3-26.3.0.0.15.jar' \
+            --output BiomesOPlenty-neoforge-26.3-26.3.0.0.15.jar
+          printf '%s\n' \
+            '091246a05f8f7c7d5f10f76686fcc7ee7c51cb52f063d02241d3500e64461660  BiomesOPlenty-neoforge-26.3-26.3.0.0.7.jar' \
+            '350a8086eed80756aa59c8f618b00fc1f126a98bb9cda88452ff21e925bdc62a  BiomesOPlenty-neoforge-26.3-26.3.0.0.15.jar' \
+            | sha256sum --check -
       - name: Build, test, document, and audit
         shell: bash
         run: |
@@ -72,7 +88,10 @@ jobs:
           ./gradlew clean "${args[@]}"
           ./gradlew check build javadoc verifyFurnitureCatalog verifyReleaseArtifacts \
             writeReleaseChecksums verifyReleaseChecksums prepareEclipse \
-            verifyEclipseProductionClasspath "${args[@]}"
+            verifyEclipseProductionClasspath \
+            "-PbiomesOPlentyJar=$RUNNER_TEMP/bop-compatibility/BiomesOPlenty-neoforge-26.3-26.3.0.0.7.jar" "${args[@]}"
+          ./gradlew verifyIntegrationTextures \
+            "-PbiomesOPlentyJar=$RUNNER_TEMP/bop-compatibility/BiomesOPlenty-neoforge-26.3-26.3.0.0.15.jar" "${args[@]}"
       - name: Upload audited release candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:

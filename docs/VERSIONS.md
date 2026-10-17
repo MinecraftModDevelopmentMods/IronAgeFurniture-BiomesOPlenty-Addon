@@ -4,12 +4,13 @@ Choose the add-on release that matches both your Minecraft version and mod loade
 
 | Add-on version | Minecraft | Mod loader | Iron Age Furniture | Biomes O' Plenty |
 |---|---|---|---|---|
-| `0.4.0.2603002` (local candidate) | `26.3` | NeoForge `[26.3.0.77,26.3.1)` | Exactly `0.4.0.2603002` | `26.3.0.0.15` up to, but not including, `26.4` |
+| `0.4.1.2603002` | `26.3` | NeoForge `[26.3.0.77,26.3.1)` | Exactly `0.4.0.2603002` | Stable `26.3.0.0.7` and newer builds, up to but not including `26.4` |
+| `0.4.0.2603002` | `26.3` | NeoForge `[26.3.0.77,26.3.1)` | Exactly `0.4.0.2603002` | `26.3.0.0.15` up to, but not including, `26.4` |
 | `0.3.0.2603002` | `26.3` | NeoForge `26.3.0.1-beta` or compatible | `0.3.0.2603002` up to, but not including, `0.4.0` | `26.3.0.0.2` up to, but not including, `26.4` |
 
 All required mods must be installed together. If a newer release changes its compatibility range, use the requirements shown on that release's download page and in Minecraft's Mods screen.
 
-The Phase 4 candidate also requires GlitchCore `26.3.0.0.5` or newer and TerraBlender `26.3.0.0.9` or newer for Minecraft 26.3. Earlier dependency combinations are not covered by this candidate.
+Phase 4 releases also require GlitchCore `26.3.0.0.5` or newer and TerraBlender `26.3.0.0.9` or newer for Minecraft 26.3. Supporting stable BOP does not remove those library requirements.
 
 ## Understanding the add-on version
 
