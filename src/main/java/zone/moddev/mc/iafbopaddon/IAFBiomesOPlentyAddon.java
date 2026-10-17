@@ -1,12 +1,10 @@
 package zone.moddev.mc.iafbopaddon;
 
 import com.mojang.logging.LogUtils;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.bus.BusGroup;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import org.slf4j.Logger;
 import zone.moddev.mc.iafbopaddon.init.ModBOPBlocks;
 import zone.moddev.mc.iafbopaddon.compat.LegacyPaddedBenchMigration;
@@ -24,37 +22,34 @@ public final class IAFBiomesOPlentyAddon {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public IAFBiomesOPlentyAddon(FMLJavaModLoadingContext context) {
-        BusGroup modBusGroup = context.getModBusGroup();
-        ModBOPBlocks.REGISTER.register(modBusGroup);
-        ModBOPBlocks.ITEMS.register(modBusGroup);
-        LegacyPaddedBenchRegistry.register(modBusGroup);
+        BusGroup modBus = context.getModBusGroup();
+        ModBOPBlocks.REGISTER.register(modBus);
+        zone.moddev.mc.iafbopaddon.init.PhaseFourBopFurniture.REGISTER.register(modBus);
+        ModBOPBlocks.ITEMS.register(modBus);
+        LegacyPaddedBenchRegistry.register(modBus);
         BuildCreativeModeTabContentsEvent.BUS.addListener(this::populateCreativeTab);
         LegacyPaddedBenchMigration.register();
-        registerGameTests(modBusGroup);
+        registerGameTests(modBus);
         LOGGER.info("Iron Age Furniture Biomes O' Plenty Add-on is loading");
     }
 
-    private static void registerGameTests(BusGroup modBusGroup) {
+    private static void registerGameTests(BusGroup bus) {
         try {
-            Class<?> bootstrap = Class.forName(
-                    "zone.moddev.mc.iafbopaddon.gametest.GameTestBootstrap");
-            bootstrap.getMethod("register", BusGroup.class).invoke(null, modBusGroup);
-        } catch (ClassNotFoundException exception) {
-            String enabledNamespaces = System.getProperty("forge.enabledGameTestNamespaces", "");
-            if (Arrays.stream(enabledNamespaces.split(","))
-                    .map(String::trim)
-                    .anyMatch(MOD_ID::equals)) {
-                throw new IllegalStateException(
-                        "GameTest source set is missing from the development run", exception);
-            }
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException exception) {
-            throw new IllegalStateException("Could not register add-on GameTests", exception);
+            Class<?> bootstrap = Class.forName("zone.moddev.mc.iafbopaddon.gametest.GameTestBootstrap");
+            bootstrap.getMethod("register", BusGroup.class).invoke(null, bus);
+        } catch (ClassNotFoundException absent) {
+            if (java.util.Arrays.asList(System.getProperty("forge.enabledGameTestNamespaces", "").split(",")).contains(MOD_ID))
+                throw new IllegalStateException("GameTest source set is missing from the development run", absent);
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException("Could not register add-on GameTests", failure);
         }
     }
 
     private void populateCreativeTab(BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey().equals(ModCreativeTab.FURNITURE.getKey())) {
-            ModBOPBlocks.ITEMS.getEntries().forEach(item -> event.accept(item.get()));
-        }
+        ModBOPBlocks.ITEMS.getEntries().forEach(holder -> {
+            var item = holder.get();
+            if (ModCreativeTab.visible(item) && event.getTabKey().equals(ModCreativeTab.keyFor(item))) event.accept(item);
+        });
     }
+
 }

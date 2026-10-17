@@ -2,45 +2,9 @@
   "minecraft": "26.3",
   "loader": "forge",
   "mods": [
-    {
-      "modId": "biomesoplenty",
-      "role": "minimum-integration",
-      "version": "26.3.0.0.2",
-      "file": "BiomesOPlenty-forge-26.3-26.3.0.0.2.jar",
-      "sha256": "330f2df1dfd19e33c609348984eef19e8ace63f6753b056459b598add3a4aa38",
-      "source": "https://www.curseforge.com/minecraft/mc-mods/biomes-o-plenty/files"
-    },
-    {
-      "modId": "biomesoplenty",
-      "role": "current-integration",
-      "version": "26.3.0.0.4",
-      "file": "BiomesOPlenty-forge-26.3-26.3.0.0.4.jar",
-      "sha256": "188b87325486b003036dbdb2f1996eabc320628cbed58608dd8fbb23d2488e8a",
-      "source": "https://www.curseforge.com/minecraft/mc-mods/biomes-o-plenty/files/8949331"
-    },
-    {
-      "modId": "glitchcore",
-      "role": "dependency",
-      "version": "26.3.0.0.3",
-      "file": "GlitchCore-forge-26.3-26.3.0.0.3.jar",
-      "sha256": "8a13afb2f8035a527e3927c3fda76bb0f889d57ea8ddf2d0926d4bc02a790152",
-      "source": "https://www.curseforge.com/minecraft/mc-mods/glitchcore/files"
-    },
-    {
-      "modId": "terrablender",
-      "role": "positive-test-dependency",
-      "version": "26.3.0.0.5",
-      "file": "TerraBlender-forge-26.3-26.3.0.0.5.jar",
-      "sha256": "926a4399d3c092b2a2d4f8626c4d4e482448217f59e86e38c7e661c33b34a846",
-      "source": "https://modrinth.com/mod/terrablender/version/shhB6Akv"
-    },
-    {
-      "modId": "terrablender",
-      "role": "current-upstream-incompatibility-probe",
-      "version": "26.3.0.0.6",
-      "file": "TerraBlender-forge-26.3-26.3.0.0.6.jar",
-      "sha256": "39733452924944aa5da5f8e033dcb2d4a435d141faf356934d0901d8c42b6e19",
-      "source": "https://www.curseforge.com/minecraft/mc-mods/terrablender-forge/files"
-    }
+    {"modId":"biomesoplenty","role":"minimum-integration","version":"26.3.0.0.7","file":"BiomesOPlenty-forge-26.3-26.3.0.0.7.jar","sha256":"21fd459cf3a0a9a2af392729fe1ae6941eea988fadc0ebc265621e0fa16f8e76","source":"https://www.curseforge.com/minecraft/mc-mods/biomes-o-plenty/files/8973617"},
+    {"modId":"biomesoplenty","role":"current-integration","version":"26.3.0.0.15","file":"BiomesOPlenty-forge-26.3-26.3.0.0.15.jar","sha256":"519246c8240cf9e1d97c77fe636bcbb0e3f152550c2a6cfe0d8f26a5b072d0a1","source":"https://www.curseforge.com/minecraft/mc-mods/biomes-o-plenty/files/9168502"},
+    {"modId":"glitchcore","role":"dependency","version":"26.3.0.0.5","file":"GlitchCore-forge-26.3-26.3.0.0.5.jar","sha256":"a62915b9d333039d0cc0c520cf999f71cfd5e5aa8bf7406a60f959cc167bdd2a","source":"https://www.curseforge.com/minecraft/mc-mods/glitchcore/files/9125344"},
+    {"modId":"terrablender","role":"positive-test-dependency","version":"26.3.0.0.9","file":"TerraBlender-forge-26.3-26.3.0.0.9.jar","sha256":"bfe24b485d0657ac9a398b784242449d7f209cb7a3a8793781d673c73537dab6","source":"https://www.curseforge.com/minecraft/mc-mods/terrablender/files/9033893"}
   ]
 }

@@ -1,0 +1,16 @@
+{
+    "type": "minecraft:crafting_shapeless",
+    "group": "ironagefurniture:bed_wood_foot_biomesoplenty_palm",
+    "ingredients": [
+        "minecraft:red_bed",
+        "biomesoplenty:palm_planks"
+    ],
+    "result": {
+        "id": "ironagefurniture:bed_wood_foot_biomesoplenty_palm",
+        "count": 1
+    },
+    "forge:condition": {
+        "type": "ironagefurniture:feature_enabled",
+        "feature": "woodenBeds"
+    }
+}

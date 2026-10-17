@@ -6,5 +6,19 @@
     ],
     "result": {
         "id": "ironagefurniture:chair_wood_ironage_bench_padded_cyan_single_biomesoplenty_empyreal"
+    },
+    "group": "ironagefurniture:chair_wood_ironage_bench_padded_cyan_single_biomesoplenty_empyreal",
+    "forge:condition": {
+        "type": "forge:and",
+        "values": [
+            {
+                "modid": "biomesoplenty",
+                "type": "forge:mod_loaded"
+            },
+            {
+                "type": "ironagefurniture:feature_enabled",
+                "feature": "benches"
+            }
+        ]
     }
 }

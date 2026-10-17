@@ -77,25 +77,6 @@ public final class LegacyPaddedBenchMappings {
         return null;
     }
 
-    /**
-     * Maps any furniture form made from a retired BOP wood to its documented
-     * visual fallback. Cherry is deliberately left to the parent mod, which
-     * owns the complete BOP-cherry-to-vanilla-cherry mapping.
-     */
-    public static Identifier retiredFurnitureTarget(Identifier legacyId) {
-        if (legacyId == null || !NAMESPACE.equals(legacyId.getNamespace())) return null;
-        String path = legacyId.getPath();
-        for (Map.Entry<String, TargetWood> entry : RETIRED_BOP_WOODS.entrySet()) {
-            String suffix = "_biomesoplenty_" + entry.getKey();
-            if (!path.endsWith(suffix)) continue;
-            TargetWood target = entry.getValue();
-            String targetSuffix = target.biomesOPlenty()
-                    ? "_biomesoplenty_" + target.wood() : "_" + target.wood();
-            return id(path.substring(0, path.length() - suffix.length()) + targetSuffix);
-        }
-        return null;
-    }
-
     public static LegacyId parseLegacy(Identifier id) {
         if (id == null || !NAMESPACE.equals(id.getNamespace())) return null;
         String path = id.getPath();
@@ -108,6 +89,21 @@ public final class LegacyPaddedBenchMappings {
             if (compatibilityBlockId("cherry", back).getPath().equals(path)) {
                 return new LegacyId("cherry", back);
             }
+        }
+        return null;
+    }
+
+    /** Retains Forge's released missing-mapping recovery for retired woods. */
+    public static Identifier retiredFurnitureTarget(Identifier legacyId) {
+        if (legacyId == null || !NAMESPACE.equals(legacyId.getNamespace())) return null;
+        String path = legacyId.getPath();
+        for (Map.Entry<String, TargetWood> entry : RETIRED_BOP_WOODS.entrySet()) {
+            String suffix = "_biomesoplenty_" + entry.getKey();
+            if (!path.endsWith(suffix)) continue;
+            TargetWood target = entry.getValue();
+            String targetSuffix = target.biomesOPlenty()
+                    ? "_biomesoplenty_" + target.wood() : "_" + target.wood();
+            return id(path.substring(0, path.length() - suffix.length()) + targetSuffix);
         }
         return null;
     }

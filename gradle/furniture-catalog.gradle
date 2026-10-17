@@ -20,6 +20,7 @@ def readFurnitureCatalog = {
     if (parsed.schema != 1) {
         throw new GradleException("Unsupported furniture catalog schema: ${parsed.schema}")
     }
+    if (parsed.dataSchema == 'forge66') parsed.dataSchema = 'forge61'
     parsed
 }
 def renderFurnitureText = { String template, Map<String, ?> values ->
@@ -56,20 +57,29 @@ def isVisibleItemDefinitionId = { String itemId ->
     ].contains(itemId)
 }
 def targetFurnitureJavaSource = { String source, def catalog ->
-    source
+    source.replace('net.neoforged.neoforge.registries.DeferredHolder', 'net.minecraftforge.registries.RegistryObject')
+            .replace('net.neoforged.neoforge.registries.DeferredRegister', 'net.minecraftforge.registries.DeferredRegister')
+            .replace('DeferredHolder<Block, Block>', 'RegistryObject<Block>')
+            .replace('DeferredRegister.create(BuiltInRegistries.BLOCK,', 'DeferredRegister.create(net.minecraft.core.registries.Registries.BLOCK,')
+            .replace('DeferredRegister.create(BuiltInRegistries.ITEM,', 'DeferredRegister.create(net.minecraft.core.registries.Registries.ITEM,')
+            .replaceAll(/new Chair(?:Nether)?\(1, 10, SoundType.WOOD, ("chair_wood_ironage_shield_[^"]+")\)/,
+            'new zone.moddev.mc.ironagefurniture.api.blocks.furniture.ShieldChair(1, 10, SoundType.WOOD, $1)')
 }
 def renderTargetFurnitureData = { String relative, String rendered, def catalog ->
-    if (!(catalog.dataSchema in ['forge50', 'forge52', 'forge61', 'forge66', 'neoforge']) || !relative.endsWith('.json')) {
+    if (!(catalog.dataSchema in ['forge50', 'forge52', 'forge61', 'neoforge']) || !relative.endsWith('.json')) {
         return rendered
     }
     if (relative.contains('/advancements/') || relative.contains('/advancement/')) {
+        String feature = relative.contains('_shield_') ? 'shieldChairs' : relative.contains('_stool_') ? 'stools'
+                : relative.contains('_bench_') ? 'benches' : 'classicChairs'
         Map wrapper = new JsonSlurper().parseText(rendered) as Map
         if (wrapper.advancements instanceof List && wrapper.advancements.size() == 1
                 && wrapper.advancements[0].conditions instanceof List
                 && wrapper.advancements[0].conditions.size() == 1) {
             Map branch = wrapper.advancements[0] as Map
             Map advancement = new LinkedHashMap(branch.advancement as Map)
-            if (catalog.dataSchema in ['forge61', 'forge66', 'neoforge']) {
+            advancement['forge:condition'] = branch.conditions[0]
+            if (catalog.dataSchema in ['forge61', 'neoforge']) {
                 advancement.sends_telemetry_event = false
                 advancement.criteria?.values()?.each { criterion ->
                     criterion.conditions?.items?.each { predicate ->
@@ -83,7 +93,8 @@ def renderTargetFurnitureData = { String relative, String rendered, def catalog 
                 wrapper = [advancements: [advancement]]
             }
         }
-        return JsonOutput.prettyPrint(JsonOutput.toJson(wrapper)) + '\n'
+        wrapper['forge:conditions'] = (wrapper['forge:conditions'] ?: []) + [[type: 'ironagefurniture:feature_enabled', feature: feature]]
+        return JsonOutput.prettyPrint(JsonOutput.toJson(forgeConditionalData(wrapper))) + '\n'
     }
     if (relative.contains('/recipes/') || relative.contains('/recipe/')) {
         Map recipe = new JsonSlurper().parseText(rendered) as Map
@@ -94,7 +105,7 @@ def renderTargetFurnitureData = { String relative, String rendered, def catalog 
         if (recipe.result instanceof Map && recipe.result.item != null) {
             recipe.result.id = recipe.result.remove('item')
         }
-        if (catalog.dataSchema in ['forge61', 'forge66', 'neoforge']) {
+        if (catalog.dataSchema in ['forge61', 'neoforge']) {
             def nativeIngredient = { Object ingredient ->
                 if (ingredient instanceof Map && ingredient.keySet() == ['item'] as Set) {
                     return ingredient.item
@@ -113,7 +124,11 @@ def renderTargetFurnitureData = { String relative, String rendered, def catalog 
                 recipe.ingredients = recipe.ingredients.collect { nativeIngredient(it) }
             }
         }
-        return JsonOutput.prettyPrint(JsonOutput.toJson(recipe)) + '\n'
+        String feature = relative.contains('_shield_') ? 'shieldChairs' : relative.contains('_stool_') ? 'stools'
+                : relative.contains('_bench_') ? 'benches' : 'classicChairs'
+        recipe.group = recipe.result.id
+        recipe['forge:conditions'] = (conditions ?: []) + [[type: 'ironagefurniture:feature_enabled', feature: feature]]
+        return JsonOutput.prettyPrint(JsonOutput.toJson(forgeConditionalData(recipe))) + '\n'
     }
     rendered
 }
@@ -285,6 +300,7 @@ def renderFurnitureCatalog = { File outputRoot ->
             }
         }
     }
+    generated.addAll(renderPhaseFourCatalog(outputRoot, language, catalog))
     String languageJson = JsonOutput.prettyPrint(JsonOutput.toJson(language)) + '\n'
     ['en_en.json', 'en_gb.json', 'en_us.json'].each { locale ->
         writeFurnitureFile(outputRoot,
@@ -298,8 +314,15 @@ def renderFurnitureCatalog = { File outputRoot ->
         fileTree('src/main/resources/assets/ironagefurniture/models/item') { include '*.json' }
                 .files.each { model -> visibleItems.add(model.name.replaceFirst(/\.json$/, '')) }
         visibleItems.findAll(isVisibleItemDefinitionId).each { itemId ->
+            Map itemModel = [type: 'minecraft:model', model: "ironagefurniture:item/${itemId}"]
+            if (itemId.startsWith('chair_wood_ironage_shield_')) {
+                // Explicitly empty shield storage shows the wooden frame, including in inventories.
+                itemModel = [type: 'minecraft:condition', property: 'minecraft:component', predicate: 'minecraft:container',
+                        value: [items: [size: 0]],
+                        on_true: [type: 'minecraft:model', model: "ironagefurniture:block/${itemId}_frame"], on_false: itemModel]
+            }
             String definition = JsonOutput.prettyPrint(JsonOutput.toJson([
-                    model: [type: 'minecraft:model', model: "ironagefurniture:item/${itemId}"]
+                    model: itemModel
             ])) + '\n'
             writeFurnitureFile(outputRoot,
                     "src/main/resources/assets/ironagefurniture/items/${itemId}.json",
@@ -314,6 +337,9 @@ def isManagedFurnitureResource = { File file ->
     if (!file.isFile() || file.name == null
             || !(file.name.endsWith('.json') || file.name == 'pack.mcmeta')) return false
     String relative = normalizeFurniturePath(project.projectDir.toPath().relativize(file.toPath()).toString())
+    if (relative.startsWith('src/main/resources/data/ironagefurniture/advancement/recipes/phase_four/')) return true
+    if (file.name.startsWith('bed_') || file.name.startsWith('chair_wingback_') || file.name.startsWith('chair_throne_')
+            || file.name.startsWith('template_bed_') || file.name.startsWith('template_chair_wingback') || file.name.startsWith('template_chair_throne')) return true
     if (relative ==~ /src\/main\/resources\/resourcepacks\/ironagefurniture_[^\/]+\/pack\.mcmeta/) return true
     if (relative.startsWith('src/main/resources/assets/ironagefurniture/items/')) return true
     if (!file.name.startsWith('chair_wood_ironage_')) return false

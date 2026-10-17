@@ -1,6 +1,6 @@
 {
     "type": "minecraft:crafting_shaped",
-    "group": "furniture",
+    "group": "ironagefurniture:chair_wood_ironage_bench_log_single_biomesoplenty_hellbark",
     "pattern": [
         "xxx"
     ],
@@ -10,5 +10,18 @@
     "result": {
         "count": 3,
         "id": "ironagefurniture:chair_wood_ironage_bench_log_single_biomesoplenty_hellbark"
+    },
+    "forge:condition": {
+        "type": "forge:and",
+        "values": [
+            {
+                "modid": "biomesoplenty",
+                "type": "forge:mod_loaded"
+            },
+            {
+                "type": "ironagefurniture:feature_enabled",
+                "feature": "benches"
+            }
+        ]
     }
 }

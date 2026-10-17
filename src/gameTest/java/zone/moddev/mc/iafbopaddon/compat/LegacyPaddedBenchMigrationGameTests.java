@@ -128,9 +128,37 @@ public final class LegacyPaddedBenchMigrationGameTests {
         List<Identifier> itemIds = ModBOPBlocks.ITEMS.getEntries().stream()
                 .map(entry -> entry.getId()).sorted().toList();
         require(helper, blockIds.size() == 546, "runtime block registry count changed");
-        require(helper, blockIds.equals(itemIds), "runtime block and item IDs differ");
+        require(helper, itemIds.size() == 1890 && itemIds.containsAll(blockIds),
+                "all 546 original items and 1,344 Phase 4 coloured items must remain registered");
         require(helper, INTEGRATED_CORE_IDS_SHA256.equals(registryHash(blockIds)),
                 "runtime registry IDs differ from the integrated-core baseline");
+
+        Set<Identifier> expectedItems = new LinkedHashSet<>(blockIds);
+        Set<Identifier> expectedPhaseFourBlocks = new LinkedHashSet<>();
+        List<String> phaseFourForms = List.of("chair_wood_ironage_wingback_", "chair_wood_ironage_throne_",
+                "bed_wood_foot_", "bed_wood_foot_left_", "bed_canopy_foot_lower_", "bed_canopy_foot_left_lower_");
+        for (String wood : zone.moddev.mc.iafbopaddon.init.PhaseFourBopFurniture.WOODS) {
+            for (String form : phaseFourForms) {
+                Identifier blockId = Identifier.fromNamespaceAndPath("ironagefurniture", form + "biomesoplenty_" + wood);
+                expectedPhaseFourBlocks.add(blockId);
+                for (String colour : LegacyPaddedBenchMappings.COLORS) {
+                    Identifier itemId = Identifier.fromNamespaceAndPath("ironagefurniture", blockId.getPath()
+                            + (colour.equals("red") ? "" : "_" + colour));
+                    expectedItems.add(itemId);
+                    require(helper, BuiltInRegistries.ITEM.getValue(itemId)
+                                    instanceof zone.moddev.mc.ironagefurniture.api.items.UpholsteredBlockItem item
+                                    && item.getBlock() == BuiltInRegistries.BLOCK.getValue(blockId),
+                            "missing coloured Phase 4 block item: " + itemId);
+                }
+            }
+            Identifier hidden = Identifier.fromNamespaceAndPath("ironagefurniture", "bed_canopy_foot_right_lower_biomesoplenty_" + wood);
+            expectedPhaseFourBlocks.add(hidden);
+            require(helper, !BuiltInRegistries.ITEM.containsKey(hidden), "hidden canopy structure part has no item");
+        }
+        require(helper, expectedItems.equals(new LinkedHashSet<>(itemIds)), "Phase 4 item IDs differ from the exact expanded contract");
+        require(helper, expectedPhaseFourBlocks.equals(zone.moddev.mc.iafbopaddon.init.PhaseFourBopFurniture.REGISTER
+                .getEntries().stream().map(entry -> entry.getId()).collect(java.util.stream.Collectors.toSet())),
+                "Phase 4 block IDs differ from the exact expanded contract");
 
         List<String> forms = new ArrayList<>(List.of(
                 "chair_wood_ironage_classic",

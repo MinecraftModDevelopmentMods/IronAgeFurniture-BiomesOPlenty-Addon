@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0.2603001
+
+- Adds wingbacks, thrones, wooden beds and canopy beds, including doubles, in all sixteen colours for the fourteen supported BOP woods.
+- Adds removable shields that keep their names, damage, enchantments and banner patterns. Empty shield chairs show just their wooden frame.
+- Places furniture in the core's Chairs, Benches and Beds tabs, with translated labels and English fallbacks.
+- Preserves the original 546 furniture identities and retired-wood recovery, and extends older-world support to the new furniture.
+- Supports stable BOP `26.3.0.0.7` and newer 26.3 builds. Requires the matching Forge core `0.4.0.2603001`, GlitchCore `26.3.0.0.5` or newer and TerraBlender `26.3.0.0.9` or newer.
+
 ## 0.3.0.2603001
 
 First release for Minecraft 26.3 on Forge.

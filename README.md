@@ -4,28 +4,44 @@ Bring the woods of Biomes O' Plenty into Iron Age Furniture. This add-on lets yo
 
 ## What this add-on includes
 
-- 546 furniture blocks and items across 14 Biomes O' Plenty wood families
-- Chairs, stools, benches and the full matching furniture range
+- The original 546 furniture items across 14 Biomes O' Plenty wood families, with their saved identities preserved
+- Wingback chairs, thrones, wooden beds and canopy beds, including doubles, in all sixteen colours
+- Shield chairs that preserve the complete shield item, including its name, damage, enchantments and banner design, and show a bare wooden frame when empty
 - Recipes and recipe-book unlocks for every included item
 - Compatibility support for older Iron Age Furniture worlds
 
 The add-on uses Biomes O' Plenty's installed textures, so resource packs that replace those wood textures can also change the matching furniture. No Biomes O' Plenty assets are included in this project.
 
+Furniture appears alongside the core mod's Chairs, Benches and Beds tabs. The core supplies lighting through its separate Lights tab; the add-on does not register another set of lights.
+
+## Crafting the new furniture
+
+- A vanilla bed and a matching plank make a wooden bed of the same colour.
+- A wooden bed, matching plank and matching carpet make a canopy bed.
+- Two identical single beds make the matching double bed.
+- A classic chair, matching plank and carpet make a wingback chair.
+- A wingback chair, matching plank and matching carpet make a throne.
+
+Chair upgrades are shapeless. Beds can still be recoloured with carpet, but those colour-change recipes stay out of the recipe book so the normal construction recipes are easier to find.
+
 ## Requirements
+
+These requirements apply to add-on `0.4.0.2603001`.
 
 Install all of the following mods:
 
 - Minecraft 26.3
-- Forge `66.0.2` or newer for Minecraft 26.3
-- Iron Age Furniture `0.3.0.2603001` or a newer compatible Forge 0.3 release
-- Biomes O' Plenty `26.3.0.0.2` or a newer 26.3 release
-- The GlitchCore and TerraBlender versions required by Biomes O' Plenty
+- Forge `66.0.2` or newer in the 66 series
+- Iron Age Furniture `0.4.0.2603001` (the exact tested core version)
+- Biomes O' Plenty `26.3.0.0.7` or a newer build for Minecraft 26.3
+- GlitchCore `26.3.0.0.5` or newer for 26.3
+- TerraBlender `26.3.0.0.9` or newer for 26.3
 
-For Forge testing, TerraBlender `26.3.0.0.5` is the current recommended build. TerraBlender `26.3.0.0.6` has a confirmed server-start crash in its own surface-rule update code on Forge 66.0.2; use `26.3.0.0.5` until TerraBlender publishes a corrected build.
+Java 25 is required. This Forge edition has been tested on Forge `66.0.2` and `66.0.13` with both BOP versions listed below. Install the Forge edition of every mod; NeoForge files are not interchangeable.
+
+The stable BOP `26.3.0.0.7` release is supported; you do not need to opt into a BOP beta. Newer builds such as `26.3.0.0.15` remain supported. GlitchCore and TerraBlender still need to meet the requirements above.
 
 This is an add-on, not a replacement for either parent mod. Minecraft will show a clear dependency error if Iron Age Furniture or Biomes O' Plenty is missing or incompatible.
-
-NeoForge players should use the separate `0.3.0.2603002` build. Furniture keeps the same saved registry names on both loaders, so a backed-up 26.3 world can move between the matching Forge and NeoForge installations.
 
 ## Updating an existing world
 
@@ -38,6 +54,8 @@ Some Biomes O' Plenty woods no longer exist. Their furniture is changed to the c
 ## For contributors
 
 The project builds with Java 25 and the checked-in Gradle wrapper. Run `gradlew.bat build` on Windows or `./gradlew build` on Linux and macOS.
+
+Before the matching core is published, local development can use `-PlocalCoreJar=<absolute path outside this checkout>` and `-PlocalCoreSha256=<verified SHA-256>`. This checks the jar name, version and checksum. Publishing is deliberately disabled in this mode; normal release builds still require the pinned released dependency.
 
 For Eclipse, import the project as an existing Gradle project. The checked-in Gradle configuration selects an installed Adoptium Java 25 runtime even when Eclipse itself is running on Java 21. Running `prepareEclipse` refreshes the generated Eclipse settings and launch files for the local machine.
 

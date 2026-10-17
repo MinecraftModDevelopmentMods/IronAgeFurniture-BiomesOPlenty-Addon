@@ -16,6 +16,8 @@ The add-on reports a short migration summary in the game log. Loading the world 
 
 The Forge and NeoForge 26.3 add-on files use the same saved furniture names. If you change loaders, make a backup first and replace all three related mods with their matching loader editions before opening the copied world.
 
+Phase 4 (`0.4.0.2603001` on Forge) extends this handling to wingbacks, thrones, single and double beds, canopy parts and shield-chair contents. Shield stacks retain their complete components. A successful furniture conversion does not certify missing terrain or other old mods; check the copied world before replacing your backup.
+
 ## Padded bench colours
 
 The currently released 1.10 and 1.12 furniture stored every padded bench as red. Those benches remain red after migration.
