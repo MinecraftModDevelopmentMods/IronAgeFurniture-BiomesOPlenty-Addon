@@ -50,6 +50,12 @@ public final class LegacyPaddedBenchRegistry {
     public static void register(BusGroup modBusGroup) {
         BLOCKS.register(modBusGroup);
         BLOCK_ENTITIES.register(modBusGroup);
+        net.minecraftforge.registries.RegisterEvent.getBus(modBusGroup).addListener(event -> {
+            if (event.getRegistryKey().equals(ForgeRegistries.Keys.ITEMS)
+                    && event.getForgeRegistry() instanceof net.minecraftforge.registries.ForgeRegistry<?> registry) {
+                ITEM_REMAPS.forEach(registry::addAlias);
+            }
+        });
         MissingMappingsEvent.BUS.addListener(LegacyPaddedBenchRegistry::onMissingMappings);
     }
 

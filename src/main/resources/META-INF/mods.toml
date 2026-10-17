@@ -41,3 +41,17 @@ ${mod_description}
     versionRange="${biomesoplenty_version_range}"
     ordering="AFTER"
     side="BOTH"
+
+[[dependencies.iafbopaddon]]
+    modId="glitchcore"
+    mandatory=true
+    versionRange="[26.3.0.0.5,26.4)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.iafbopaddon]]
+    modId="terrablender"
+    mandatory=true
+    versionRange="[26.3.0.0.9,26.4)"
+    ordering="AFTER"
+    side="BOTH"
