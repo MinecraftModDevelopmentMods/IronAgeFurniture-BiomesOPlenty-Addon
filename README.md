@@ -26,18 +26,22 @@ Chair upgrades are shapeless. Beds can still be recoloured with carpet, but thos
 
 ## Requirements
 
+These requirements apply to add-on `0.4.1.2603002`.
+
 Install all of the following mods:
 
 - Minecraft 26.3
 - NeoForge 26.3
-- Iron Age Furniture `0.4.0.2603002` (the exact matching core version)
-- Biomes O' Plenty `26.3.0.0.15` or a newer 26.3 release
+- Iron Age Furniture `0.4.0.2603002` (the exact tested core version)
+- Biomes O' Plenty `26.3.0.0.7` or a newer build for Minecraft 26.3
 - GlitchCore `26.3.0.0.5` or newer for 26.3
 - TerraBlender `26.3.0.0.9` or newer for 26.3
 
 Phase 4 supports NeoForge `26.3.0.77` through the `26.3.0` series and builds against `26.3.0.83`. The core and add-on have been tested together on both `.77` and `.83` with the dependency versions listed above. Tests cover crafting, rendering, shield storage and older-world upgrades; see the [migration guide](docs/LEGACY_MIGRATION.md) for the tested scope and limitations.
 
 Older BOP `26.3.0.0.2` is no longer supported: it fails during world startup with current dependencies, including in an installation without Iron Age Furniture. Update the complete dependency stack together rather than mixing it with the earlier GlitchCore and TerraBlender releases.
+
+The stable BOP `26.3.0.0.7` release is supported; you do not need to opt into a BOP beta. Newer builds such as `26.3.0.0.15` remain supported. GlitchCore and TerraBlender still need to meet the requirements above.
 
 This is an add-on, not a replacement for either parent mod. Minecraft will show a clear dependency error if Iron Age Furniture or Biomes O' Plenty is missing or incompatible.
 

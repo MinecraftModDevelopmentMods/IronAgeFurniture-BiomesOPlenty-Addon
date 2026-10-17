@@ -6,11 +6,11 @@ tasks.register('verifyMavenCoordinates') {
     group = 'verification'
     dependsOn tasks.named('generatePomFileForMavenJavaPublication')
     doLast {
-        if (expectedCoordinate != 'zone.moddev.mc:iron-age-furniture-biomes-o-plenty-addon:0.4.0.2603002') {
+        if (expectedCoordinate != 'zone.moddev.mc:iron-age-furniture-biomes-o-plenty-addon:0.4.1.2603002') {
             throw new GradleException("Unexpected Maven coordinate ${expectedCoordinate}")
         }
         String pom = layout.buildDirectory.file('publications/mavenJava/pom-default.xml').get().asFile.getText('UTF-8')
-        ['<groupId>zone.moddev.mc</groupId>', '<artifactId>iron-age-furniture-biomes-o-plenty-addon</artifactId>', '<version>0.4.0.2603002</version>'].each {
+        ['<groupId>zone.moddev.mc</groupId>', '<artifactId>iron-age-furniture-biomes-o-plenty-addon</artifactId>', '<version>0.4.1.2603002</version>'].each {
             if (!pom.contains(it)) throw new GradleException("Generated POM is missing ${it}")
         }
     }
@@ -131,7 +131,7 @@ tasks.register('verifyIntegrationTextures') {
     group = 'verification'
     doLast {
         File bopJar = providers.gradleProperty('biomesOPlentyJar').map { file(it) }
-                .orElse(file('../dependency-inspection/BiomesOPlenty-neoforge-26.3-26.3.0.0.15.jar')).get()
+                .orElse(file("../dependency-inspection/BiomesOPlenty-neoforge-26.3-${project.biomesoplenty_version}.jar")).get()
         if (!bopJar.isFile()) {
             logger.lifecycle("Skipping external BOP jar path audit; provide -PbiomesOPlentyJar=<published jar>. Static resource references remain checked.")
             return
@@ -242,7 +242,7 @@ tasks.register('verifyExpandedMetadata') {
                 'modId="ironagefurniture"',
                 'versionRange="[0.4.0.2603002]"',
                 'modId="biomesoplenty"',
-                'versionRange="[26.3.0.0.15,26.4)"',
+                'versionRange="[26.3.0.0.7,26.4)"',
                 'modId="glitchcore"',
                 'versionRange="[26.3.0.0.5,26.4)"',
                 'modId="terrablender"',

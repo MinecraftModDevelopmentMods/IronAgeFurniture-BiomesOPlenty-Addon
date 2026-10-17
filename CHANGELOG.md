@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1.2603002
+
+- Supports the stable Biomes O' Plenty `26.3.0.0.7` release, so a BOP beta is no longer required.
+- Keeps support for newer BOP builds for Minecraft 26.3, including `26.3.0.0.15`.
+- Continues to use Iron Age Furniture `0.4.0.2603002`, GlitchCore `26.3.0.0.5` or newer, and TerraBlender `26.3.0.0.9` or newer. Furniture, recipes and existing-world compatibility are unchanged.
+
 ## 0.4.0.2603002
 
 - Shows the bare wooden frame in inventories when a shield chair has no shield attached.

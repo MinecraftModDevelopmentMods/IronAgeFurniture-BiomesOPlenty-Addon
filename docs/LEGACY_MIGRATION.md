@@ -53,3 +53,5 @@ If Minecraft refuses to open the world, return to the untouched backup and use t
 Version `0.4.0.2603002` has passed first and second loads of the supported 1.10/1.12 furniture fixtures and existing 26.3 BOP saves. The tested fixtures load directly through the compatibility bridge; no intermediate Minecraft save was needed for those particular cases. A hash-checked Sylvester furniture extraction also passes both loads, without altering its source world.
 
 This is furniture compatibility testing, not a promise that the rest of an old modpack can be converted. Missing BYG or Immersive Engineering furniture and unrelated old biome terrain are outside this add-on's coverage. Keep the original installation and backup until you have checked your own copied world.
+
+Add-on `0.4.1.2603002` also accepts the stable BOP `26.3.0.0.7` release. It keeps the same furniture identities and migration rules as `0.4.0.2603002`; updating the add-on does not require rebuilding furniture or changing its colours.

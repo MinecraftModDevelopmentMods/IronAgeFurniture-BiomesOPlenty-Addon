@@ -52,6 +52,14 @@
     {
       "modId": "biomesoplenty",
       "role": "minimum-compatibility",
+      "version": "26.3.0.0.7",
+      "file": "BiomesOPlenty-neoforge-26.3-26.3.0.0.7.jar",
+      "sha256": "091246a05f8f7c7d5f10f76686fcc7ee7c51cb52f063d02241d3500e64461660",
+      "source": "https://www.curseforge.com/minecraft/mc-mods/biomes-o-plenty/files/8973616"
+    },
+    {
+      "modId": "biomesoplenty",
+      "role": "current-compatibility",
       "version": "26.3.0.0.15",
       "file": "BiomesOPlenty-neoforge-26.3-26.3.0.0.15.jar",
       "sha256": "350a8086eed80756aa59c8f618b00fc1f126a98bb9cda88452ff21e925bdc62a",
