@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1.2603001
+
+- Adds translated names for hidden furniture parts and older compatibility entries in all seventeen language files, so HUD mods show readable names.
+- Requires Iron Age Furniture `0.4.1.2603001`. Furniture identities, recipes and world-upgrade behaviour are unchanged.
+
 ## 0.4.0.2603001
 
 - Adds wingbacks, thrones, wooden beds and canopy beds, including doubles, in all sixteen colours for the fourteen supported BOP woods.

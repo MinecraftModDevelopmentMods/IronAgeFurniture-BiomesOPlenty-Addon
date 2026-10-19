@@ -78,8 +78,8 @@ tasks.register('verifyFurnitureInventory') {
         }
         ['en_en.json', 'en_gb.json', 'en_us.json'].each { locale ->
             Map language = new JsonSlurper().parse(file("src/main/resources/assets/ironagefurniture/lang/${locale}")) as Map
-            // Keep the original bench names, all new colour variants and four tab labels.
-            if (language.size() != 3364) throw new GradleException("${locale} contains ${language.size()} translations; expected 3364")
+            // Include the hidden canopy parts and legacy compatibility benches.
+            if (language.size() != 3410) throw new GradleException("${locale} contains ${language.size()} translations; expected 3410")
         }
         List<String> woods = ['dead', 'fir', 'hellbark', 'jacaranda', 'magic', 'mahogany', 'maple',
                 'origin_oak', 'palm', 'pine', 'redwood', 'umbran', 'willow', 'empyreal']
@@ -305,7 +305,7 @@ tasks.register('verifyExpandedMetadata') {
                 'modId="forge"',
                 'versionRange="[66.0.2,67)"',
                 'modId="ironagefurniture"',
-                'versionRange="[0.4.0.2603001]"',
+                'versionRange="[0.4.1.2603001]"',
                 'modId="biomesoplenty"',
                 'versionRange="[26.3.0.0.7,26.4)"',
                 'modId="glitchcore"', 'versionRange="[26.3.0.0.5,26.4)"',
@@ -477,7 +477,7 @@ tasks.register('verifyReleaseArtifacts') {
                 throw new GradleException("Unexpected Minecraft 26.3 pack format ${pack.pack}")
             }
             String modsToml = zip.getInputStream(zip.getEntry('META-INF/mods.toml')).getText('UTF-8')
-            ['loaderVersion="[66,)"', 'versionRange="[0.4.0.2603001]"',
+            ['loaderVersion="[66,)"', 'versionRange="[0.4.1.2603001]"',
              'versionRange="[26.3.0.0.7,26.4)"', 'versionRange="[26.3.0.0.5,26.4)"',
              'versionRange="[26.3.0.0.9,26.4)"'].each { required ->
                 if (!modsToml.contains(required)) {
