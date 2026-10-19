@@ -36,7 +36,7 @@ class DependencyCompatibilityTest {
     @Test
     void retainsTheTestedCoreAndSupportingLibraries() throws IOException {
         Properties properties = properties();
-        assertEquals("[0.4.0.2603001]", properties.getProperty("ironagefurniture_version_range"));
+        assertEquals("[0.4.1.2603001]", properties.getProperty("ironagefurniture_version_range"));
         assertEquals("[26.3.0.0.5,26.4)", properties.getProperty("glitchcore_version_range"));
         assertEquals("[26.3.0.0.9,26.4)", properties.getProperty("terrablender_version_range"));
     }
