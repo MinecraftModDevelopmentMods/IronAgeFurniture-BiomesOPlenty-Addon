@@ -13,7 +13,7 @@
         },
         "has_the_recipe": {
             "conditions": {
-                "recipes": "ironagefurniture:chair_wood_ironage_bench_padded_gray_single_biomesoplenty_origin_oak"
+                "recipe": "ironagefurniture:chair_wood_ironage_bench_padded_gray_single_biomesoplenty_origin_oak"
             },
             "trigger": "minecraft:recipe_unlocked"
         }

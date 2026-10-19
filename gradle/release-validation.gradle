@@ -109,7 +109,7 @@ tasks.withType(PublishToMavenRepository).configureEach {
 
 tasks.withType(PublishToMavenRepository).configureEach {
     doFirst {
-        if (providers.gradleProperty('localCoreJar').isPresent())
+        if (localCoreJarSetting.isPresent())
             throw new GradleException('Local staged-core builds cannot be published; use the normally pinned released dependency')
     }
 }

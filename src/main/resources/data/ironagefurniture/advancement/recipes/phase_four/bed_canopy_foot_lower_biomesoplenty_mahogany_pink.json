@@ -14,7 +14,7 @@
         "has_the_recipe": {
             "trigger": "minecraft:recipe_unlocked",
             "conditions": {
-                "recipes": "ironagefurniture:bed_canopy_foot_lower_biomesoplenty_mahogany_pink"
+                "recipe": "ironagefurniture:bed_canopy_foot_lower_biomesoplenty_mahogany_pink"
             }
         }
     },

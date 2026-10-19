@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0.2602002
+
+- Port the released NeoForge 26.3 Phase 4 add-on to Minecraft 26.2, keeping the add-on separate from the core.
+- Preserve the fourteen wood families, historical registry/resource identities, sixteen-colour furniture, complete shield storage and documented retired-wood substitutions.
+- Require the matching Iron Age Furniture `0.4.0.2602002` core and native NeoForge 26.2 dependencies.
+- Add translated names for hidden furniture parts and older compatibility entries in all seventeen language files, including names used by HUD mods.
+- Accept the stable Minecraft 26.2 BOP build `26.1.2.0.40` and newer 26.2 builds, including `26.2.0.0.28`, without forcing a BOP beta.
+- Keep GlitchCore `26.2.0.0.0` and TerraBlender `26.2.0.0.1` minimum requirements.
+- Preserve nested containers, bundle selection, padded-bench colours and joined shapes through first and repeated world loads on the native 26.2 runtime.
+
+## Earlier NeoForge 26.3 history
+
 ## 0.4.1.2603002
 
 - Supports the stable Biomes O' Plenty `26.3.0.0.7` release, so a BOP beta is no longer required.

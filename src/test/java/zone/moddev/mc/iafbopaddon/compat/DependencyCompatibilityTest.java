@@ -20,7 +20,7 @@ class DependencyCompatibilityTest {
     @Test
     void acceptsStableBopAndNewerBuildsForTheSameMinecraftVersion() throws Exception {
         VersionRange range = bopRange();
-        for (String version : List.of("26.3.0.0.7", "26.3.0.0.15", "26.3.0.0.99")) {
+        for (String version : List.of("26.1.2.0.40", "26.2.0.0.24", "26.2.0.0.28", "26.2.0.0.99")) {
             assertTrue(range.containsVersion(new DefaultArtifactVersion(version)), version);
         }
     }
@@ -28,7 +28,7 @@ class DependencyCompatibilityTest {
     @Test
     void rejectsEarlierBuildsAndTheNextMinecraftVersion() throws Exception {
         VersionRange range = bopRange();
-        for (String version : List.of("26.3.0.0.2", "26.3.0.0.6", "26.4.0.0.1")) {
+        for (String version : List.of("26.1.2.0.39", "26.1.1.0.99", "26.3.0.0.1")) {
             assertFalse(range.containsVersion(new DefaultArtifactVersion(version)), version);
         }
     }
@@ -36,9 +36,9 @@ class DependencyCompatibilityTest {
     @Test
     void retainsTheTestedCoreAndSupportingLibraries() throws IOException {
         Properties properties = properties();
-        assertEquals("[0.4.0.2603002]", properties.getProperty("ironagefurniture_version_range"));
-        assertEquals("[26.3.0.0.5,26.4)", properties.getProperty("glitchcore_version_range"));
-        assertEquals("[26.3.0.0.9,26.4)", properties.getProperty("terrablender_version_range"));
+        assertEquals("[0.4.0.2602002]", properties.getProperty("ironagefurniture_version_range"));
+        assertEquals("[26.2.0.0.0,26.3)", properties.getProperty("glitchcore_version_range"));
+        assertEquals("[26.2.0.0.1,26.3)", properties.getProperty("terrablender_version_range"));
     }
 
     private static VersionRange bopRange() throws IOException, InvalidVersionSpecificationException {

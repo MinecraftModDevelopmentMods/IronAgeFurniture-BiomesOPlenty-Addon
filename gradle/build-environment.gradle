@@ -167,11 +167,21 @@ configurations {
     }
 }
 
+// Buildship can use the same verified, unpublished core as local command-line
+// builds. These machine-specific settings are ignored by Git; explicit -P
+// arguments take precedence, and publication remains prohibited in this mode.
+Properties localCoreSettings = new Properties()
+if (file('local.properties').isFile()) file('local.properties').withInputStream { localCoreSettings.load(it) }
+ext.localCoreJarSetting = providers.gradleProperty('localCoreJar').orElse(
+        providers.provider { localCoreSettings.getProperty('localCoreJar') })
+ext.localCoreHashSetting = providers.gradleProperty('localCoreSha256').orElse(
+        providers.provider { localCoreSettings.getProperty('localCoreSha256') })
+
 dependencies {
     implementation "net.neoforged:neoforge:${project.neo_version}"
-    if (providers.gradleProperty('localCoreJar').isPresent()) {
-        File stagedCore = file(providers.gradleProperty('localCoreJar').get())
-        String expectedHash = providers.gradleProperty('localCoreSha256').getOrElse('')
+    if (localCoreJarSetting.isPresent()) {
+        File stagedCore = file(localCoreJarSetting.get())
+        String expectedHash = localCoreHashSetting.getOrElse('')
         if (!(expectedHash ==~ /(?i)[0-9a-f]{64}/) || !stagedCore.isFile()
                 || stagedCore.name != "iron-age-furniture-${project.ironagefurniture_version}.jar"
                 || stagedCore.toPath().toAbsolutePath().normalize().startsWith(projectDir.toPath().toAbsolutePath().normalize())
@@ -201,8 +211,8 @@ tasks.register('verifyPinnedCoreArtifact') {
         Set<File> files = configurations.ironAgeFurnitureVerification.files
         if (files.size() != 1) throw new GradleException("Expected one released IronAgeFurniture jar, found ${files}")
         String actual = sha256Of(files.first())
-        String expected = providers.gradleProperty('localCoreJar').isPresent()
-                ? providers.gradleProperty('localCoreSha256').get() : project.ironagefurniture_sha256.toString()
+        String expected = localCoreJarSetting.isPresent()
+                ? localCoreHashSetting.get() : project.ironagefurniture_sha256.toString()
         if (actual != expected.toLowerCase(Locale.ROOT)) {
             throw new GradleException("IronAgeFurniture ${project.ironagefurniture_version} SHA-256 mismatch: ${actual}")
         }

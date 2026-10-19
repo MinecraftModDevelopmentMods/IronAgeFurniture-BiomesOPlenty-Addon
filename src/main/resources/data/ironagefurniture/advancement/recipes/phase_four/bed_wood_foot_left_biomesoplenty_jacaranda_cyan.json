@@ -14,7 +14,7 @@
         "has_the_recipe": {
             "trigger": "minecraft:recipe_unlocked",
             "conditions": {
-                "recipes": "ironagefurniture:bed_wood_foot_left_biomesoplenty_jacaranda_cyan"
+                "recipe": "ironagefurniture:bed_wood_foot_left_biomesoplenty_jacaranda_cyan"
             }
         }
     },

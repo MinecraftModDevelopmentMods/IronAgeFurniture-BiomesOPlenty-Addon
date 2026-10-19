@@ -1,6 +1,6 @@
 # Iron Age Furniture: Biomes O' Plenty Add-on
 
-Bring the woods of Biomes O' Plenty into Iron Age Furniture. This add-on lets you craft the familiar Iron Age Furniture range in every supported Biomes O' Plenty 26.3 wood type.
+Bring the woods of Biomes O' Plenty into Iron Age Furniture. Version `0.4.0.2602002` provides Phase 4 furniture for Minecraft 26.2 on NeoForge. Back up existing worlds and check upgrades on disposable copies before updating.
 
 ## What this add-on includes
 
@@ -26,22 +26,20 @@ Chair upgrades are shapeless. Beds can still be recoloured with carpet, but thos
 
 ## Requirements
 
-These requirements apply to add-on `0.4.1.2603002`.
+These requirements apply to add-on `0.4.0.2602002`.
 
 Install all of the following mods:
 
-- Minecraft 26.3
-- NeoForge 26.3
-- Iron Age Furniture `0.4.0.2603002` (the exact tested core version)
-- Biomes O' Plenty `26.3.0.0.7` or a newer build for Minecraft 26.3
-- GlitchCore `26.3.0.0.5` or newer for 26.3
-- TerraBlender `26.3.0.0.9` or newer for 26.3
+- Minecraft 26.2
+- NeoForge `26.2.0.45-beta` in the `26.2.0` series
+- Iron Age Furniture `0.4.0.2602002` (the exact matching core version)
+- The Minecraft 26.2 NeoForge build of Biomes O' Plenty `26.1.2.0.40`, or a newer build for Minecraft 26.2
+- GlitchCore `26.2.0.0.0` or newer for 26.2
+- TerraBlender `26.2.0.0.1` or newer for 26.2
 
-Phase 4 supports NeoForge `26.3.0.77` through the `26.3.0` series and builds against `26.3.0.83`. The core and add-on have been tested together on both `.77` and `.83` with the dependency versions listed above. Tests cover crafting, rendering, shield storage and older-world upgrades; see the [migration guide](docs/LEGACY_MIGRATION.md) for the tested scope and limitations.
+The stable BOP jar is named `BiomesOPlenty-neoforge-26.2-26.1.2.0.40.jar`. Its retained numeric version starts with `26.1.2`, but its published Minecraft metadata and filename explicitly target 26.2. Do not substitute a jar whose Minecraft target is actually 26.1.2.
 
-Older BOP `26.3.0.0.2` is no longer supported: it fails during world startup with current dependencies, including in an installation without Iron Age Furniture. Update the complete dependency stack together rather than mixing it with the earlier GlitchCore and TerraBlender releases.
-
-The stable BOP `26.3.0.0.7` release is supported; you do not need to opt into a BOP beta. Newer builds such as `26.3.0.0.15` remain supported. GlitchCore and TerraBlender still need to meet the requirements above.
+The dependency range accepts that stable release and newer 26.2 builds, including BOP `26.2.0.0.28`; it does not require a BOP beta. The required GlitchCore and TerraBlender releases may themselves be labelled beta. Install the complete matching stack, not jars for Forge or Minecraft 26.3.
 
 This is an add-on, not a replacement for either parent mod. Minecraft will show a clear dependency error if Iron Age Furniture or Biomes O' Plenty is missing or incompatible.
 
@@ -49,7 +47,7 @@ This is an add-on, not a replacement for either parent mod. Minecraft will show 
 
 The add-on can recognise Biomes O' Plenty furniture saved by older Iron Age Furniture versions, including the red-only padded benches from the current 1.10 and 1.12 releases and the newer sixteen-colour format.
 
-Always back up a world before upgrading it. Very old Minecraft worlds may need to pass through intermediate Minecraft versions before 26.3 can open them. Once Minecraft has successfully loaded the world, the add-on converts the furniture it recognises and preserves bench colour wherever that information is available.
+Always back up a world before upgrading it. Very old Minecraft worlds may need intermediate Minecraft versions before 26.2 can open them. The add-on converts furniture it recognises and preserves bench colour where that information is available. Do not open a Minecraft 26.3 world in 26.2: this is a downward code port, not world-downgrade support.
 
 Some Biomes O' Plenty woods no longer exist. Their furniture is changed to the closest practical visual alternative instead of disappearing. The full list and recommended upgrade steps are in the [legacy migration guide](docs/LEGACY_MIGRATION.md).
 

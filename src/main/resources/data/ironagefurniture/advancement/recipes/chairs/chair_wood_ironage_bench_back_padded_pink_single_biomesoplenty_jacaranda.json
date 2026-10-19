@@ -13,7 +13,7 @@
         },
         "has_the_recipe": {
             "conditions": {
-                "recipes": "ironagefurniture:chair_wood_ironage_bench_back_padded_pink_single_biomesoplenty_jacaranda"
+                "recipe": "ironagefurniture:chair_wood_ironage_bench_back_padded_pink_single_biomesoplenty_jacaranda"
             },
             "trigger": "minecraft:recipe_unlocked"
         }
