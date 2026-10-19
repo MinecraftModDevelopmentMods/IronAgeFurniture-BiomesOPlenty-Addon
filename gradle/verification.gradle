@@ -6,11 +6,11 @@ tasks.register('verifyMavenCoordinates') {
     group = 'verification'
     dependsOn tasks.named('generatePomFileForMavenJavaPublication')
     doLast {
-        if (expectedCoordinate != 'zone.moddev.mc:iron-age-furniture-biomes-o-plenty-addon:0.4.1.2603002') {
+        if (expectedCoordinate != 'zone.moddev.mc:iron-age-furniture-biomes-o-plenty-addon:0.4.2.2603002') {
             throw new GradleException("Unexpected Maven coordinate ${expectedCoordinate}")
         }
         String pom = layout.buildDirectory.file('publications/mavenJava/pom-default.xml').get().asFile.getText('UTF-8')
-        ['<groupId>zone.moddev.mc</groupId>', '<artifactId>iron-age-furniture-biomes-o-plenty-addon</artifactId>', '<version>0.4.1.2603002</version>'].each {
+        ['<groupId>zone.moddev.mc</groupId>', '<artifactId>iron-age-furniture-biomes-o-plenty-addon</artifactId>', '<version>0.4.2.2603002</version>'].each {
             if (!pom.contains(it)) throw new GradleException("Generated POM is missing ${it}")
         }
     }
@@ -43,8 +43,8 @@ tasks.register('verifyFurnitureInventory') {
         }
         ['en_en.json', 'en_gb.json', 'en_us.json'].each { locale ->
             Map language = new JsonSlurper().parse(file("src/main/resources/assets/ironagefurniture/lang/${locale}")) as Map
-            // Keep the original bench names, all new colour variants and four tab labels.
-            if (language.size() != 3364) throw new GradleException("${locale} contains ${language.size()} translations; expected 3364")
+            // Include the hidden canopy parts and legacy compatibility benches.
+            if (language.size() != 3410) throw new GradleException("${locale} contains ${language.size()} translations; expected 3410")
         }
         List<String> woods = ['dead', 'fir', 'hellbark', 'jacaranda', 'magic', 'mahogany', 'maple',
                 'origin_oak', 'palm', 'pine', 'redwood', 'umbran', 'willow', 'empyreal']
@@ -240,7 +240,7 @@ tasks.register('verifyExpandedMetadata') {
         [
                 'modId="iafbopaddon"',
                 'modId="ironagefurniture"',
-                'versionRange="[0.4.0.2603002]"',
+                'versionRange="[0.4.1.2603002]"',
                 'modId="biomesoplenty"',
                 'versionRange="[26.3.0.0.7,26.4)"',
                 'modId="glitchcore"',
@@ -301,7 +301,7 @@ tasks.register('verifyReleaseTagWorkflow') {
     group = 'verification'
     doLast {
         String workflow = file('.github/workflows/publish-release.yml').getText('UTF-8')
-        ['master-26.3', 'master-26.3-neo', '2603001', '2603002',
+        ['master-26.2-neo', '2602002', 'master-26.3', 'master-26.3-neo', '2603001', '2603002',
          'curseforge_project_id', '1705705', 'confirm_live_publication',
          'ironagefurniture,biomes-o-plenty', 'project_slug=ironagefurniture'].each { required ->
             if (!workflow.contains(required)) {

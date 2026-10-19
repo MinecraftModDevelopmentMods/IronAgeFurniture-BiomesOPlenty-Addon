@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2.2603002
+
+- Adds translated names for hidden furniture parts and older compatibility entries in all seventeen language files, so HUD mods show readable names.
+- Requires Iron Age Furniture `0.4.1.2603002`. Furniture identities, recipes and world-upgrade behaviour are unchanged.
+
 ## 0.4.1.2603002
 
 - Supports the stable Biomes O' Plenty `26.3.0.0.7` release, so a BOP beta is no longer required.
