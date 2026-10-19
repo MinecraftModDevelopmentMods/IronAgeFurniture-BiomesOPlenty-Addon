@@ -26,13 +26,13 @@ Chair upgrades are shapeless. Beds can still be recoloured with carpet, but thos
 
 ## Requirements
 
-These requirements apply to add-on `0.4.1.2603002`.
+These requirements apply to add-on `0.4.2.2603002`.
 
 Install all of the following mods:
 
 - Minecraft 26.3
 - NeoForge 26.3
-- Iron Age Furniture `0.4.0.2603002` (the exact tested core version)
+- Iron Age Furniture `0.4.1.2603002` (the exact tested core version)
 - Biomes O' Plenty `26.3.0.0.7` or a newer build for Minecraft 26.3
 - GlitchCore `26.3.0.0.5` or newer for 26.3
 - TerraBlender `26.3.0.0.9` or newer for 26.3
