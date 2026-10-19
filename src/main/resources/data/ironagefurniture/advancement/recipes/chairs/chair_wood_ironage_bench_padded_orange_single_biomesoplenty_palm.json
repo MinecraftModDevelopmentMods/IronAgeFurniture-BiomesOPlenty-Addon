@@ -13,7 +13,7 @@
         },
         "has_the_recipe": {
             "conditions": {
-                "recipes": "ironagefurniture:chair_wood_ironage_bench_padded_orange_single_biomesoplenty_palm"
+                "recipe": "ironagefurniture:chair_wood_ironage_bench_padded_orange_single_biomesoplenty_palm"
             },
             "trigger": "minecraft:recipe_unlocked"
         }

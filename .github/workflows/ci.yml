@@ -1,18 +1,18 @@
-name: IAF Biomes O Plenty Add-on 26.3 NeoForge CI
+name: IAF Biomes O Plenty Add-on 26.2 NeoForge CI
 
 on:
   push:
     branches:
-      - master-26.3-neo
+      - master-26.2-neo
   pull_request:
     branches:
-      - master-26.3-neo
+      - master-26.2-neo
 
 permissions:
   contents: read
 
 concurrency:
-  group: iaf-bop-addon-26.3-neoforge-${{ github.workflow }}-${{ github.ref }}
+  group: iaf-bop-addon-26.2-neoforge-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -65,14 +65,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bop-compatibility"
           cd "$RUNNER_TEMP/bop-compatibility"
           curl --fail --location --retry 3 \
-            'https://edge.forgecdn.net/files/8973/616/BiomesOPlenty-neoforge-26.3-26.3.0.0.7.jar' \
-            --output BiomesOPlenty-neoforge-26.3-26.3.0.0.7.jar
+            'https://cdn.modrinth.com/data/HXF82T3G/versions/MJ1vjUQT/BiomesOPlenty-neoforge-26.2-26.1.2.0.40.jar' \
+            --output BiomesOPlenty-neoforge-26.2-26.1.2.0.40.jar
           curl --fail --location --retry 3 \
-            'https://edge.forgecdn.net/files/9168/503/BiomesOPlenty-neoforge-26.3-26.3.0.0.15.jar' \
-            --output BiomesOPlenty-neoforge-26.3-26.3.0.0.15.jar
+            'https://cdn.modrinth.com/data/HXF82T3G/versions/Kpuzuokl/BiomesOPlenty-neoforge-26.2-26.2.0.0.28.jar' \
+            --output BiomesOPlenty-neoforge-26.2-26.2.0.0.28.jar
           printf '%s\n' \
-            '091246a05f8f7c7d5f10f76686fcc7ee7c51cb52f063d02241d3500e64461660  BiomesOPlenty-neoforge-26.3-26.3.0.0.7.jar' \
-            '350a8086eed80756aa59c8f618b00fc1f126a98bb9cda88452ff21e925bdc62a  BiomesOPlenty-neoforge-26.3-26.3.0.0.15.jar' \
+            'c98208c568cc893fe32c8cd347fe3cc42a283da137bbe5beff7587753443e561  BiomesOPlenty-neoforge-26.2-26.1.2.0.40.jar' \
+            '7e609751018648b80156065522e4350856ccae0be6b56660898ac2cc48ccefb5  BiomesOPlenty-neoforge-26.2-26.2.0.0.28.jar' \
             | sha256sum --check -
       - name: Build, test, document, and audit
         shell: bash
@@ -89,13 +89,13 @@ jobs:
           ./gradlew check build javadoc verifyFurnitureCatalog verifyReleaseArtifacts \
             writeReleaseChecksums verifyReleaseChecksums prepareEclipse \
             verifyEclipseProductionClasspath \
-            "-PbiomesOPlentyJar=$RUNNER_TEMP/bop-compatibility/BiomesOPlenty-neoforge-26.3-26.3.0.0.7.jar" "${args[@]}"
+            "-PbiomesOPlentyJar=$RUNNER_TEMP/bop-compatibility/BiomesOPlenty-neoforge-26.2-26.1.2.0.40.jar" "${args[@]}"
           ./gradlew verifyIntegrationTextures \
-            "-PbiomesOPlentyJar=$RUNNER_TEMP/bop-compatibility/BiomesOPlenty-neoforge-26.3-26.3.0.0.15.jar" "${args[@]}"
+            "-PbiomesOPlentyJar=$RUNNER_TEMP/bop-compatibility/BiomesOPlenty-neoforge-26.2-26.2.0.0.28.jar" "${args[@]}"
       - name: Upload audited release candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: iaf-bop-addon-26.3-neoforge-${{ github.sha }}
+          name: iaf-bop-addon-26.2-neoforge-${{ github.sha }}
           if-no-files-found: error
           retention-days: 30
           path: |

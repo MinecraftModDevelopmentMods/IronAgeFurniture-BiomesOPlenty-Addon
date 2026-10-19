@@ -1,15 +1,17 @@
 # Updating older worlds
 
-Iron Age Furniture included Biomes O' Plenty furniture directly in some older Minecraft versions. From Minecraft 26.3 onward, that furniture is supplied by this add-on instead.
+Version `0.4.0.2602002` targets Minecraft 26.2 on NeoForge. Work on backed-up copies at or below that Minecraft version. A Minecraft 26.3 world must not be opened in 26.2.
 
-The add-on can restore recognised furniture when an older world reaches Minecraft 26.3. This includes padded benches and padded back benches from the 1.10 and 1.12 versions of Iron Age Furniture.
+Iron Age Furniture included Biomes O' Plenty furniture directly in some older Minecraft versions. This Phase 4 branch supplies that furniture through the separate add-on instead.
+
+The add-on can restore recognised furniture when an older world reaches Minecraft 26.2. This includes padded benches and padded back benches from the 1.10 and 1.12 versions of Iron Age Furniture.
 
 ## Before you start
 
 1. Make a complete backup of the original world.
 2. Work on a copy until you have checked the result in game.
-3. Follow Minecraft's normal world-upgrade path. A world from 1.10 or 1.12 may need to be opened in one or more intermediate Minecraft versions before 26.3 can read it.
-4. Install Iron Age Furniture, Biomes O' Plenty, this add-on, and all required dependencies before opening the world in 26.3.
+3. Follow Minecraft's normal world-upgrade path. The furniture fixtures described below loaded directly, but other old worlds may need intermediate Minecraft versions before 26.2 can read them.
+4. Install the matching Minecraft 26.2 NeoForge Iron Age Furniture core, this add-on, Biomes O' Plenty, GlitchCore and TerraBlender before opening the copy.
 5. Visit the areas containing old furniture so Minecraft loads and updates those chunks, then save and reopen the world once.
 
 The add-on reports a short migration summary in the game log. Loading the world again is safe; furniture that has already been updated is left alone.
@@ -44,14 +46,16 @@ These are visual compatibility choices made by Iron Age Furniture. They do not m
 
 ## What this add-on cannot do
 
-This migration covers Iron Age Furniture blocks and items only. It does not convert Biomes O' Plenty terrain, plants or other contents of an old world, and it cannot make Minecraft 26.3 open a world format that Minecraft itself cannot read.
+This migration covers Iron Age Furniture blocks and items only. It does not convert Biomes O' Plenty terrain, plants or other contents of an old world, and it cannot make Minecraft 26.2 open a world format that Minecraft itself cannot read. The availability of a present-day biome mod does not restore every block or item from its historical releases.
 
 If Minecraft refuses to open the world, return to the untouched backup and use the normal Minecraft upgrade sequence. Do not continue experimenting on the only copy of a valued world.
 
 ## Phase 4 verification
 
-Version `0.4.0.2603002` has passed first and second loads of the supported 1.10/1.12 furniture fixtures and existing 26.3 BOP saves. The tested fixtures load directly through the compatibility bridge; no intermediate Minecraft save was needed for those particular cases. A hash-checked Sylvester furniture extraction also passes both loads, without altering its source world.
+The local `0.4.0.2602002` core and add-on passed first and second loads of fourteen original furniture fixtures from Minecraft 1.10, 1.12 and 1.14–1.17 on NeoForge 26.2.0.45-beta. The tested copies loaded directly through the compatibility bridge; no intermediate Minecraft save was needed for those particular cases. Original source-world fingerprints remained unchanged. Bed direction, upholstery, joined bench shapes, stored items and repeated-load behaviour were checked.
 
-This is furniture compatibility testing, not a promise that the rest of an old modpack can be converted. Missing BYG or Immersive Engineering furniture and unrelated old biome terrain are outside this add-on's coverage. Keep the original installation and backup until you have checked your own copied world.
+A separate freshly generated Minecraft 26.2 test world passed padded-bench migration and repeated disk loads with 16,384 placed blocks, nested container items and selected bundles. Unchanged slots, item components and bundle selection were retained; the second load performed no further conversions.
 
-Add-on `0.4.1.2603002` also accepts the stable BOP `26.3.0.0.7` release. It keeps the same furniture identities and migration rules as `0.4.0.2603002`; updating the add-on does not require rebuilding furniture or changing its colours.
+This is furniture compatibility testing, not a promise that the rest of an old modpack can be converted. The Sylvester copy passed its furniture checks, but contained many unavailable foreign blocks and items. That is not approval to convert the complete original modpack. Base Metals and the original Furniture Mod have no qualifying 26.2 provider release in the checked catalogs. Missing BYG or Immersive Engineering furniture and unrelated old biome terrain are outside this add-on's coverage. Keep the original installation and backup until you have checked your own copied world.
+
+The stable BOP `26.1.2.0.40` jar explicitly targets Minecraft 26.2, despite the retained numeric prefix in its version. The newer 26.2 BOP `26.2.0.0.28` build is also supported. Use the actual 26.2 files and their required dependencies, not jars for Minecraft 26.3 or another loader.

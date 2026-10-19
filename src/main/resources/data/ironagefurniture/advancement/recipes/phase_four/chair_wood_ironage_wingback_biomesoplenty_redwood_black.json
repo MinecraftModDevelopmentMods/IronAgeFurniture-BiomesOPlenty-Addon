@@ -14,7 +14,7 @@
         "has_the_recipe": {
             "trigger": "minecraft:recipe_unlocked",
             "conditions": {
-                "recipes": "ironagefurniture:chair_wood_ironage_wingback_biomesoplenty_redwood_black"
+                "recipe": "ironagefurniture:chair_wood_ironage_wingback_biomesoplenty_redwood_black"
             }
         }
     },

@@ -2,7 +2,7 @@ import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 
 // Keep the same construction costs and colours across core and wood add-ons.
-// Minecraft 26.3 beds use native head/foot parts plus an upper-canopy flag.
+// Minecraft 26.2 beds use native head/foot parts plus an upper-canopy flag.
 ext.renderPhaseFourCatalog = { File outputRoot, Map language, Map catalog ->
     Set<String> generated = new LinkedHashSet<>()
     def write = { String relative, Object document ->
@@ -137,7 +137,7 @@ ext.renderPhaseFourCatalog = { File outputRoot, Map language, Map catalog ->
                     result: [id: "ironagefurniture:${outputId}", count: 1], 'neoforge:conditions': conditions])
                 write("${data}/advancement/recipes/phase_four/${recipeId}.json", [parent: 'minecraft:recipes/root',
                     criteria: [has_ingredient: [trigger: 'minecraft:inventory_changed', conditions: [items: [[items: input]]]],
-                        has_the_recipe: [trigger: 'minecraft:recipe_unlocked', conditions: [recipes: "ironagefurniture:${recipeId}"]]],
+                        has_the_recipe: [trigger: 'minecraft:recipe_unlocked', conditions: [recipe: "ironagefurniture:${recipeId}"]]],
                     requirements: [['has_ingredient', 'has_the_recipe']], rewards: [recipes: ["ironagefurniture:${recipeId}"]],
                     'neoforge:conditions': conditions])
             }

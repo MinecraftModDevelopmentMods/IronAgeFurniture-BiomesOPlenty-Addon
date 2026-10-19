@@ -3,6 +3,7 @@ package zone.moddev.mc.iafbopaddon.compat;
 import com.mojang.logging.LogUtils;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.LongAdder;
@@ -20,6 +21,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.BundleContents;
 import net.minecraft.world.item.component.CustomData;
@@ -42,6 +44,8 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 import zone.moddev.mc.iafbopaddon.IAFBiomesOPlentyAddon;
+import zone.moddev.mc.iafbopaddon.mixin.BundleContentsInvoker;
+import zone.moddev.mc.iafbopaddon.mixin.ItemContainerContentsAccess;
 import zone.moddev.mc.iafbopaddon.world.MigrationWorldState;
 
 /**
@@ -216,31 +220,39 @@ public final class LegacyPaddedBenchMigration {
 
         ItemContainerContents container = working.get(DataComponents.CONTAINER);
         if (container != null) {
-            List<ItemStack> migrated = new ArrayList<>();
+            List<Optional<ItemStackTemplate>> migrated = new ArrayList<>();
             boolean nestedChanged = false;
-            for (ItemStack nested : container.itemCopies().toList()) {
-                StackResult result = migrateStack(nested, state);
-                migrated.add(result.stack());
+            for (Optional<ItemStackTemplate> nested : ((ItemContainerContentsAccess) (Object) container).iafbopaddon$items()) {
+                if (nested.isEmpty()) {
+                    migrated.add(Optional.empty());
+                    continue;
+                }
+                StackResult result = migrateTemplate(nested.get(), state);
+                migrated.add(result.changed()
+                        ? Optional.of(ItemStackTemplate.fromNonEmptyStack(result.stack())) : nested);
                 nestedChanged |= result.changed();
             }
             if (nestedChanged) {
                 working = working.copy();
-                working.set(DataComponents.CONTAINER, container.copyWithContents(migrated.stream()));
+                working.set(DataComponents.CONTAINER, ItemContainerContentsAccess.iafbopaddon$create(migrated));
                 changed = true;
             }
         }
         BundleContents bundle = working.get(DataComponents.BUNDLE_CONTENTS);
         if (bundle != null) {
-            List<ItemStack> migrated = new ArrayList<>();
+            List<ItemStackTemplate> migrated = new ArrayList<>();
             boolean nestedChanged = false;
-            for (ItemStack nested : bundle.itemCopies().toList()) {
-                StackResult result = migrateStack(nested, state);
-                migrated.add(result.stack());
+            for (ItemStackTemplate nested : bundle.items()) {
+                StackResult result = migrateTemplate(nested, state);
+                migrated.add(result.changed() ? ItemStackTemplate.fromNonEmptyStack(result.stack()) : nested);
                 nestedChanged |= result.changed();
             }
             if (nestedChanged) {
                 if (!changed) working = working.copy();
-                working.set(DataComponents.BUNDLE_CONTENTS, bundle.copyWithContents(migrated.stream()));
+                // Mutable's constructor drops all entries if their weight is invalid.
+                // Rebuild directly instead, preserving every entry and the selection.
+                working.set(DataComponents.BUNDLE_CONTENTS, BundleContentsInvoker.iafbopaddon$create(
+                        migrated, bundle.getSelectedItemIndex()));
                 changed = true;
             }
         }
@@ -268,6 +280,13 @@ public final class LegacyPaddedBenchMigration {
         else migrated.set(DataComponents.CUSTOM_DATA, CustomData.of(customTag));
         recordItems(state, stack.getCount());
         return new StackResult(migrated, true);
+    }
+
+    private static StackResult migrateTemplate(ItemStackTemplate template, MigrationWorldState state) {
+        // Template.create() validates for gameplay and returns EMPTY for malformed
+        // counts or nested bundle weights. Migration must preserve those saved
+        // payloads, not erase them while changing an unrelated sibling's colour.
+        return migrateStack(new ItemStack(template.item(), template.count(), template.components()), state);
     }
 
     public static boolean migrateStacksInNbt(Tag tag, MigrationWorldState state) {

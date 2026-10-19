@@ -82,6 +82,7 @@ jobs:
             exit 1
           fi
           case "$target_suffix" in
+            2602002) expected_addon_branch=master-26.2-neo ;;
             2603001) expected_addon_branch=master-26.3 ;;
             2603002) expected_addon_branch=master-26.3-neo ;;
             *) echo "Unsupported add-on release target $target_suffix" >&2; exit 1 ;;
