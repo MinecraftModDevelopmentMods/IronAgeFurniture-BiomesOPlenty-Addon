@@ -4,6 +4,7 @@ Choose the add-on release that matches both your Minecraft version and mod loade
 
 | Add-on version | Minecraft | Mod loader | Iron Age Furniture | Biomes O' Plenty |
 |---|---|---|---|---|
+| `0.4.3.2603002` | `26.3` | NeoForge `[26.3.0.77,26.3.1)` | `0.4.1.2603002` and newer `0.4.x` builds, below `0.5` | Stable `26.3.0.0.7` and newer builds, below `26.4` |
 | `0.4.2.2603002` | `26.3` | NeoForge `[26.3.0.77,26.3.1)` | Exactly `0.4.1.2603002` | Stable `26.3.0.0.7` and newer builds, below `26.4` |
 | `0.4.1.2603002` | `26.3` | NeoForge `[26.3.0.77,26.3.1)` | Exactly `0.4.0.2603002` | Stable `26.3.0.0.7` and newer builds, up to but not including `26.4` |
 | `0.4.0.2603002` | `26.3` | NeoForge `[26.3.0.77,26.3.1)` | Exactly `0.4.0.2603002` | `26.3.0.0.15` up to, but not including, `26.4` |

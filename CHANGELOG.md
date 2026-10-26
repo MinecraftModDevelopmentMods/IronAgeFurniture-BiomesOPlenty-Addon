@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.3.2603002
+
+- Builds against NeoForge `26.3.0.99` while keeping the existing `.77` minimum.
+- Allows compatible Iron Age Furniture `0.4.x` updates from `0.4.1.2603002` onwards, without requiring an add-on update for every core patch. The next `0.5` series still needs a compatibility review.
+
 ## 0.4.2.2603002
 
 - Adds translated names for hidden furniture parts and older compatibility entries in all seventeen language files, so HUD mods show readable names.
