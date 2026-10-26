@@ -6,11 +6,11 @@ tasks.register('verifyMavenCoordinates') {
     group = 'verification'
     dependsOn tasks.named('generatePomFileForMavenJavaPublication')
     doLast {
-        if (expectedCoordinate != 'zone.moddev.mc:iron-age-furniture-biomes-o-plenty-addon:0.4.2.2603002') {
+        if (expectedCoordinate != 'zone.moddev.mc:iron-age-furniture-biomes-o-plenty-addon:0.4.3.2603002') {
             throw new GradleException("Unexpected Maven coordinate ${expectedCoordinate}")
         }
         String pom = layout.buildDirectory.file('publications/mavenJava/pom-default.xml').get().asFile.getText('UTF-8')
-        ['<groupId>zone.moddev.mc</groupId>', '<artifactId>iron-age-furniture-biomes-o-plenty-addon</artifactId>', '<version>0.4.2.2603002</version>'].each {
+        ['<groupId>zone.moddev.mc</groupId>', '<artifactId>iron-age-furniture-biomes-o-plenty-addon</artifactId>', '<version>0.4.3.2603002</version>'].each {
             if (!pom.contains(it)) throw new GradleException("Generated POM is missing ${it}")
         }
     }
@@ -240,7 +240,7 @@ tasks.register('verifyExpandedMetadata') {
         [
                 'modId="iafbopaddon"',
                 'modId="ironagefurniture"',
-                'versionRange="[0.4.1.2603002]"',
+                'versionRange="[0.4.1.2603002,0.5)"',
                 'modId="biomesoplenty"',
                 'versionRange="[26.3.0.0.7,26.4)"',
                 'modId="glitchcore"',
