@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2.2603001
+
+- Allow later Iron Age Furniture 0.4.x patches, including the tallow recipe fix, without rejecting them as incompatible.
+
 ## 0.4.1.2603001
 
 - Adds translated names for hidden furniture parts and older compatibility entries in all seventeen language files, so HUD mods show readable names.
