@@ -36,9 +36,20 @@ class DependencyCompatibilityTest {
     @Test
     void retainsTheTestedCoreAndSupportingLibraries() throws IOException {
         Properties properties = properties();
-        assertEquals("[0.4.1.2603001]", properties.getProperty("ironagefurniture_version_range"));
+        assertEquals("[0.4.1.2603001,0.5)", properties.getProperty("ironagefurniture_version_range"));
         assertEquals("[26.3.0.0.5,26.4)", properties.getProperty("glitchcore_version_range"));
         assertEquals("[26.3.0.0.9,26.4)", properties.getProperty("terrablender_version_range"));
+    }
+
+    @Test
+    void acceptsCorePatchReleasesWithoutAdmittingOlderOrNextFeatureReleases() throws Exception {
+        VersionRange range = VersionRange.createFromVersionSpec(properties().getProperty("ironagefurniture_version_range"));
+        for (String version : List.of("0.4.1.2603001", "0.4.2.2603001")) {
+            assertTrue(range.containsVersion(new DefaultArtifactVersion(version)), version);
+        }
+        for (String version : List.of("0.4.0.2603001", "0.5.0.2603001")) {
+            assertFalse(range.containsVersion(new DefaultArtifactVersion(version)), version);
+        }
     }
 
     private static VersionRange bopRange() throws IOException, InvalidVersionSpecificationException {
