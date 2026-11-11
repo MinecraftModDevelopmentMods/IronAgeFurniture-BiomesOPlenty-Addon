@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1.2602002
+
+- Allow later Iron Age Furniture 0.4.x patches, including the tallow recipe fix, without rejecting them as incompatible.
+
 ## 0.4.0.2602002
 
 - Port the released NeoForge 26.3 Phase 4 add-on to Minecraft 26.2, keeping the add-on separate from the core.

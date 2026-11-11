@@ -1,6 +1,6 @@
 # Supported versions
 
-Choose the add-on that matches both your Minecraft version and mod loader. This branch provides `0.4.0.2602002` for Minecraft 26.2, NeoForge `[26.2.0.45-beta,26.2.1)`, and exactly Iron Age Furniture `0.4.0.2602002`.
+Choose the add-on that matches both your Minecraft version and mod loader. This branch provides `0.4.1.2602002` for Minecraft 26.2, NeoForge `[26.2.0.45-beta,26.2.1)`, and Iron Age Furniture `0.4.0.2602002` or a later `0.4.x` patch.
 
 The add-on accepts the stable Minecraft 26.2 BOP build `26.1.2.0.40` and newer builds below `26.3`, with GlitchCore `[26.2.0.0.0,26.3)` and TerraBlender `[26.2.0.0.1,26.3)`. The Minecraft target shown on each jar's download page matters; a similar numeric version is not enough. Both stable BOP and the newer `26.2.0.0.28` build passed packaged client, server and furniture-upgrade checks.
 

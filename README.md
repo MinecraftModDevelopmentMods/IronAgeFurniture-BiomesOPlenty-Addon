@@ -1,6 +1,6 @@
 # Iron Age Furniture: Biomes O' Plenty Add-on
 
-Bring the woods of Biomes O' Plenty into Iron Age Furniture. Version `0.4.0.2602002` provides Phase 4 furniture for Minecraft 26.2 on NeoForge. Back up existing worlds and check upgrades on disposable copies before updating.
+Bring the woods of Biomes O' Plenty into Iron Age Furniture. Version `0.4.1.2602002` provides Phase 4 furniture for Minecraft 26.2 on NeoForge. Back up existing worlds and check upgrades on disposable copies before updating.
 
 ## What this add-on includes
 
@@ -26,13 +26,13 @@ Chair upgrades are shapeless. Beds can still be recoloured with carpet, but thos
 
 ## Requirements
 
-These requirements apply to add-on `0.4.0.2602002`.
+These requirements apply to add-on `0.4.1.2602002`. This update also supports the core's tallow recipe fix.
 
 Install all of the following mods:
 
 - Minecraft 26.2
 - NeoForge `26.2.0.45-beta` in the `26.2.0` series
-- Iron Age Furniture `0.4.0.2602002` (the exact matching core version)
+- Iron Age Furniture `0.4.0.2602002` or a later `0.4.x` patch for Minecraft 26.2
 - The Minecraft 26.2 NeoForge build of Biomes O' Plenty `26.1.2.0.40`, or a newer build for Minecraft 26.2
 - GlitchCore `26.2.0.0.0` or newer for 26.2
 - TerraBlender `26.2.0.0.1` or newer for 26.2
