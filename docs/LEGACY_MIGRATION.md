@@ -1,6 +1,6 @@
 # Updating older worlds
 
-Version `0.4.0.2602002` targets Minecraft 26.2 on NeoForge. Work on backed-up copies at or below that Minecraft version. A Minecraft 26.3 world must not be opened in 26.2.
+Version `0.4.1.2602002` targets Minecraft 26.2 on NeoForge. Work on backed-up copies at or below that Minecraft version. A Minecraft 26.3 world must not be opened in 26.2.
 
 Iron Age Furniture included Biomes O' Plenty furniture directly in some older Minecraft versions. This Phase 4 branch supplies that furniture through the separate add-on instead.
 
